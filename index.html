@@ -1,0 +1,3165 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>红树林守护者模拟器</title>
+<style>
+  :root{
+    --panel:#ffffff;
+    --ink:#1f2d3d;
+    --ink2:#5a6b7d;
+    --line:#dbe4ee;
+    --green:#2e9e5b;
+    --yellow:#e0a52e;
+    --red:#d8544a;
+    --blue:#3d9bd6;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  /* ===== 页面背景装饰层（飘云/落叶/光斑/飞鸟） ===== */
+  #bgDeco{position:fixed;inset:0;z-index:-1;overflow:hidden;pointer-events:none;}
+  #bgDeco .cloud{
+    position:absolute;height:34px;border-radius:999px;filter:blur(16px);
+    background:rgba(255,255,255,.85);animation:cloudDrift linear infinite;
+  }
+  @keyframes cloudDrift{from{transform:translateX(-25vw);}to{transform:translateX(125vw);}}
+  #bgDeco .leaf{position:absolute;opacity:.45;animation:leafFall linear infinite;}
+  @keyframes leafFall{
+    0%{transform:translate(0,-6vh) rotate(0deg);}
+    50%{transform:translate(4vw,50vh) rotate(180deg);}
+    100%{transform:translate(-2vw,106vh) rotate(360deg);}
+  }
+  #bgDeco .gleam{
+    position:absolute;border-radius:50%;
+    background:radial-gradient(circle,rgba(255,255,255,.95),transparent 70%);
+    animation:twinkle 4.5s ease-in-out infinite;
+  }
+  #bgDeco .bird{position:absolute;font-size:15px;opacity:.35;animation:birdFly linear infinite;}
+  @keyframes birdFly{
+    0%{transform:translate(-8vw,10vh) scaleX(1);}
+    100%{transform:translate(112vw,2vh) scaleX(1);}
+  }
+  /* ===== 皮肤专属特效粒子 ===== */
+  #bgDeco .snowp{position:absolute;top:0;color:#e8f4ff;opacity:.85;text-shadow:0 0 6px rgba(255,255,255,.9);animation:snowFall linear infinite;}
+  @keyframes snowFall{0%{transform:translate(0,-8vh) rotate(0deg);}100%{transform:translate(4vw,108vh) rotate(300deg);}}
+  #bgDeco .bubblep{position:absolute;bottom:-8vh;border-radius:50%;border:1.5px solid rgba(255,255,255,.8);background:radial-gradient(circle at 35% 30%, rgba(255,255,255,.7), rgba(255,255,255,.08));animation:bubbleRise linear infinite;}
+  @keyframes bubbleRise{0%{transform:translate(0,0);}50%{transform:translate(2vw,-55vh);}100%{transform:translate(-1vw,-112vh);}}
+  #bgDeco .firefly{position:absolute;border-radius:50%;background:radial-gradient(circle,#f4ff9e 0%,rgba(244,255,158,0) 70%);animation:fireflyMove ease-in-out infinite;}
+  @keyframes fireflyMove{0%,100%{transform:translate(0,0);opacity:.1;}25%{opacity:1;}50%{transform:translate(3vw,-4vh);opacity:.45;}75%{opacity:.95;}}
+  #bgDeco .petalp{position:absolute;animation:petalFall linear infinite;}
+  @keyframes petalFall{
+    0%{transform:translate(0,-8vh) rotate(0deg);}
+    25%{transform:translate(3vw,26vh) rotate(95deg);}
+    50%{transform:translate(-2vw,52vh) rotate(190deg);}
+    75%{transform:translate(3vw,78vh) rotate(280deg);}
+    100%{transform:translate(0,108vh) rotate(380deg);}
+  }
+  #bgDeco .sparkp{position:absolute;border-radius:50%;background:radial-gradient(circle,#fff7d6,rgba(255,215,100,0) 70%);animation:twinkle 2.2s ease-in-out infinite;}
+  #bgDeco .starp{position:absolute;border-radius:50%;background:#fff;box-shadow:0 0 8px rgba(255,255,255,.95);animation:twinkle 3s ease-in-out infinite;}
+  #bgDeco .aurora-band{position:absolute;left:-10%;width:120%;filter:blur(34px);border-radius:50%;mix-blend-mode:screen;animation:auroraWave ease-in-out infinite alternate;}
+  @keyframes auroraWave{from{transform:translateX(-4vw) skewY(-4deg) scaleY(.85);}to{transform:translateX(4vw) skewY(5deg) scaleY(1.18);}}
+  #bgDeco .inkp{position:absolute;border-radius:50%;background:radial-gradient(circle,rgba(70,80,90,.4),transparent 70%);animation:inkDrift ease-in-out infinite alternate;}
+  @keyframes inkDrift{from{transform:translate(0,0) scale(1);}to{transform:translate(2vw,-2vh) scale(1.45);}}
+  #bgDeco .digitalp{position:absolute;top:0;width:2px;background:linear-gradient(180deg,rgba(0,255,200,.9),transparent);animation:digitalFall linear infinite;}
+  @keyframes digitalFall{0%{transform:translateY(-14vh);}100%{transform:translateY(112vh);}}
+  body{
+    font-family:"PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+    background:
+      radial-gradient(1100px 480px at 88% -6%, rgba(255,213,140,.42), transparent 62%),
+      radial-gradient(900px 520px at -8% 28%, rgba(126,222,196,.30), transparent 60%),
+      radial-gradient(860px 620px at 52% 112%, rgba(142,204,242,.34), transparent 65%),
+      linear-gradient(180deg,#e6f4fb 0%,#eefaf3 52%,#e0f3ec 100%);
+    background-attachment:fixed;
+    color:var(--ink);
+    min-height:100vh;
+    display:flex;flex-direction:column;align-items:center;
+    padding:14px 12px 30px;
+  }
+  h1{font-size:22px;display:flex;align-items:center;gap:8px;}
+  .subtitle{font-size:12px;color:var(--ink2);margin-top:3px;}
+  header{width:100%;max-width:1060px;display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;}
+  .head-right{display:flex;flex-direction:column;align-items:flex-end;gap:6px;}
+  .head-btns{display:flex;flex-direction:column;gap:6px;align-items:flex-end;}
+  .btn-row{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;}
+  .head-btns .btn{padding:6px 13px;font-size:12.5px;white-space:nowrap;border-radius:999px;}
+  .stage-badge{font-size:12px;background:#e8f4fd;color:#1e6fa8;border:1px solid #bfe0f5;border-radius:999px;padding:4px 12px;}
+  .btn{
+    border:none;border-radius:10px;padding:8px 18px;font-size:14px;cursor:pointer;
+    background:var(--green);color:#fff;font-weight:600;transition:.2s;
+  }
+  .btn:hover{filter:brightness(1.08);transform:translateY(-1px);}
+  .btn.ghost{background:#fff;color:var(--ink);border:1px solid var(--line);}
+  .btn.warn{background:var(--red);}
+  .btn.blue{background:var(--blue);}
+  .btn.small{padding:5px 12px;font-size:12px;border-radius:8px;}
+
+  /* ===== 仪表盘 ===== */
+  .dashboard{
+    width:100%;max-width:1060px;display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(175px,1fr));
+    gap:10px;margin:14px 0;
+  }
+  .meter{
+    background:rgba(255,255,255,.78);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+    border:1px solid rgba(255,255,255,.9);border-radius:14px;
+    padding:10px 14px;box-shadow:0 2px 10px rgba(30,60,90,.08);
+  }
+  .meter .m-title{font-size:13px;font-weight:600;display:flex;justify-content:space-between;}
+  .meter .m-title .val{font-variant-numeric:tabular-nums;color:var(--ink2);}
+  .bar{height:10px;border-radius:999px;background:#edf1f6;margin-top:8px;overflow:hidden;}
+  .bar > i{display:block;height:100%;border-radius:999px;width:100%;transition:width 1s ease,background 1s ease;}
+  .m-note{font-size:11px;color:var(--ink2);margin-top:5px;min-height:14px;}
+
+  /* ===== 场景 ===== */
+  .scene-wrap{
+    width:100%;max-width:1060px;background:rgba(255,255,255,.82);
+    backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+    border:1px solid rgba(255,255,255,.95);border-radius:16px;overflow:hidden;
+    box-shadow:0 8px 28px rgba(30,60,90,.14);
+    position:relative;
+  }
+  /* 章节过场卡（故事运镜） */
+  #chapterVeil{
+    position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    opacity:0;transition:opacity .5s ease;pointer-events:none;z-index:5;
+    background:linear-gradient(180deg,rgba(255,255,255,0) 0%,rgba(255,255,255,.55) 30%,rgba(255,255,255,.55) 70%,rgba(255,255,255,0) 100%);
+  }
+  #chapterVeil.show{opacity:1;}
+  #chapterVeil .cv-box{
+    background:rgba(255,255,255,.94);border:1px solid var(--line);border-radius:16px;
+    padding:14px 40px;text-align:center;box-shadow:0 10px 30px rgba(30,60,90,.18);
+    transform:scale(.85) translateY(8px);transition:transform .5s ease;
+  }
+  #chapterVeil.show .cv-box{transform:scale(1) translateY(0);}
+  #chapterVeil .cv-day{font-size:12px;color:var(--ink2);letter-spacing:3px;}
+  #chapterVeil .cv-beat{font-size:19px;font-weight:800;margin-top:4px;color:var(--ink);}
+  #cheatBtn{position:fixed;right:16px;bottom:16px;z-index:70;display:none;border:none;cursor:pointer;
+    background:linear-gradient(135deg,#f5c542,#e8961e);color:#fff;border-radius:999px;
+    padding:11px 20px;font-weight:800;font-size:14px;box-shadow:0 6px 18px rgba(230,150,30,.45);}
+  #cheatBtn:hover{transform:translateY(-2px);}
+
+  /* ===== 游戏开场标题画面 ===== */
+  #introVeil{
+    position:fixed;inset:0;z-index:80;overflow:hidden;
+    background:linear-gradient(180deg,#0d2b33 0%,#14444d 45%,#1d6a68 75%,#2a8f7d 100%);
+    display:flex;align-items:center;justify-content:center;flex-direction:column;
+    transition:opacity .7s ease;
+  }
+  #introVeil.bye{opacity:0;pointer-events:none;}
+  .intro-star{position:absolute;border-radius:50%;background:#fff;opacity:.5;animation:twinkle 3s ease-in-out infinite;}
+  .intro-title-wrap{text-align:center;animation:riseUp 1.2s ease both .2s;}
+  .intro-leaf{font-size:58px;display:inline-block;animation:floaty 3.4s ease-in-out infinite;}
+  .intro-title{
+    font-size:44px;font-weight:900;color:#eafcf4;letter-spacing:10px;margin:6px 0 4px;
+    text-shadow:0 4px 24px rgba(0,0,0,.35);
+  }
+  .intro-sub{font-size:14px;color:#9fd8c8;letter-spacing:6px;}
+  .intro-tag{
+    margin-top:22px;font-size:13.5px;color:#cfeee2;max-width:420px;line-height:1.9;
+    animation:riseUp 1.2s ease both .7s;
+  }
+  .intro-btn{
+    margin-top:30px;padding:13px 52px;font-size:17px;font-weight:800;letter-spacing:6px;
+    border:none;border-radius:999px;cursor:pointer;color:#0d2b33;
+    background:linear-gradient(180deg,#ffe28a,#f4c34d);
+    box-shadow:0 6px 24px rgba(244,195,77,.45);
+    animation:riseUp 1.2s ease both 1.1s, pulse 2.2s ease-in-out 1.8s infinite;
+  }
+  .intro-btn:hover{filter:brightness(1.07);}
+  .intro-ver{position:absolute;bottom:52px;font-size:11px;color:#7fb5a8;letter-spacing:2px;animation:riseUp 1.2s ease both 1.4s;}
+  .intro-acc{position:absolute;bottom:86px;display:flex;gap:8px;align-items:center;font-size:12px;color:#bfe8db;
+    animation:riseUp 1.2s ease both 1.3s;}
+  .acc-chip{border:1px solid rgba(255,255,255,.35);background:rgba(255,255,255,.08);color:#eafff6;
+    border-radius:999px;padding:4px 12px;font-size:12px;cursor:pointer;}
+  .acc-chip:hover{background:rgba(255,255,255,.18);}
+  .acc-chip.on{background:#f5c542;border-color:#f5c542;color:#3a2a00;font-weight:800;}
+  .intro-wave{position:absolute;left:0;right:0;bottom:0;height:70px;}
+  .intro-wave i{
+    position:absolute;bottom:0;left:-10%;width:120%;height:100%;
+    background:radial-gradient(circle at 10px -8px, transparent 14px, rgba(255,255,255,.16) 15px) repeat-x;
+    background-size:44px 32px;animation:waveSlide 7s linear infinite;
+  }
+  .intro-wave i.w2{opacity:.5;animation-duration:11s;animation-direction:reverse;bottom:8px;}
+  @keyframes riseUp{from{opacity:0;transform:translateY(26px);}to{opacity:1;transform:none;}}
+  @keyframes floaty{0%,100%{transform:translateY(0) rotate(-4deg);}50%{transform:translateY(-10px) rotate(4deg);}}
+  @keyframes pulse{0%,100%{transform:scale(1);}50%{transform:scale(1.05);}}
+  @keyframes waveSlide{to{background-position-x:44px;}}
+
+  /* ===== 全屏故事页（序章 / 卷末尾声） ===== */
+  #storyVeil{
+    position:fixed;inset:0;z-index:70;display:flex;align-items:center;justify-content:center;
+    background:rgba(13,32,40,.78);backdrop-filter:blur(3px);padding:18px;
+    opacity:0;pointer-events:none;transition:opacity .45s ease;
+  }
+  #storyVeil.show{opacity:1;pointer-events:auto;}
+  .story-book{
+    background:#fffdf6;border-radius:18px;max-width:600px;width:100%;
+    padding:34px 40px 28px;box-shadow:0 20px 60px rgba(0,0,0,.4);
+    border:1px solid #e8e0cc;position:relative;
+    transform:translateY(24px) scale(.97);transition:transform .45s ease;
+  }
+  #storyVeil.show .story-book{transform:none;}
+  .story-book::before{content:'❦';position:absolute;top:14px;right:20px;color:#d8ceb2;font-size:18px;}
+  .story-kicker{font-size:12px;letter-spacing:4px;color:#8a7f5f;text-align:center;}
+  .story-title{
+    font-size:23px;font-weight:900;color:#2d3a2e;text-align:center;margin:8px 0 4px;
+    font-family:"Songti SC","STSong","SimSun",serif;
+  }
+  .story-divider{width:70px;height:2px;background:#c9b98a;margin:12px auto 16px;border-radius:2px;}
+  .story-paras p{
+    font-size:14.5px;line-height:2.05;color:#3c463c;margin:0 0 10px;text-align:justify;
+    font-family:"Songti SC","STSong","SimSun",serif;
+    opacity:0;animation:paraIn .8s ease both;
+  }
+  @keyframes paraIn{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:none;}}
+  .story-foot{
+    border-top:1px dashed #d8ceb2;margin-top:14px;padding-top:10px;
+    font-size:12.5px;color:#6b7263;line-height:1.8;
+  }
+  .story-actions{margin-top:18px;text-align:center;}
+  .story-actions .btn{
+    background:linear-gradient(180deg,#3fae6a,#2e8f56);color:#fff;border:none;
+    padding:11px 38px;border-radius:999px;font-size:15px;font-weight:700;cursor:pointer;
+    box-shadow:0 4px 14px rgba(63,174,106,.4);
+  }
+  .story-actions .btn:hover{filter:brightness(1.08);}
+
+  svg.scene{display:block;width:100%;height:auto;}
+  .clickable{cursor:pointer;}
+  .clickable:hover{filter:brightness(1.12);}
+  .tide-anim{animation:tide 7s ease-in-out infinite;}
+  @keyframes tide{0%,100%{transform:translateY(0);}50%{transform:translateY(-16px);}}
+  .fish{animation:swim 9s linear infinite;}
+  .fish.f2{animation-duration:12s;animation-direction:reverse;}
+  .fish.f3{animation-duration:15s;}
+  @keyframes swim{0%{transform:translateX(-60px);}100%{transform:translateX(1080px);}}
+  .fishbody{animation:bob 1.6s ease-in-out infinite;}
+  @keyframes bob{0%,100%{transform:translateY(0);}50%{transform:translateY(4px);}}
+  .crabwalk{animation:crab 5s ease-in-out infinite alternate;}
+  @keyframes crab{from{transform:translateX(0);}to{transform:translateX(26px);}}
+  .plankton{animation:twinkle 2.4s ease-in-out infinite;}
+  /* 场景内远景动画 */
+  .cloud1{animation:cloudSvgA 95s linear infinite;}
+  .cloud2{animation:cloudSvgB 130s linear infinite;}
+  @keyframes cloudSvgA{from{transform:translateX(-130px);}to{transform:translateX(1060px);}}
+  @keyframes cloudSvgB{from{transform:translateX(1080px);}to{transform:translateX(-160px);}}
+  .birdsG path{animation:birdBob 3.2s ease-in-out infinite;}
+  .birdsG path:nth-child(2){animation-delay:.9s;}
+  .birdsG path:nth-child(3){animation-delay:1.7s;}
+  @keyframes birdBob{0%,100%{transform:translateY(0);}50%{transform:translateY(-6px);}}  @keyframes twinkle{0%,100%{opacity:.25;}50%{opacity:.95;}}
+  .treeSway{transform-origin:bottom center;animation:sway 6s ease-in-out infinite;}
+  @keyframes sway{0%,100%{transform:rotate(-.6deg);}50%{transform:rotate(.6deg);}}
+  #pipeFlow{stroke-dasharray:9 7;animation:flow 1s linear infinite;}
+  @keyframes flow{to{stroke-dashoffset:-16;}}
+  .hidden{display:none !important;}
+  .fade-in{animation:fadeIn .9s ease both;}
+  @keyframes fadeIn{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:none;}}
+  .duck-bob{animation:bob 1.2s ease-in-out infinite;}
+  /* 台风效果 */
+  #stormClouds{transition:opacity 1.2s;}
+  .storm-rain{animation:rain .5s linear infinite;}
+  @keyframes rain{to{transform:translateY(14px);}}
+  .scene-shake{animation:shake .4s ease-in-out 3;}
+  @keyframes shake{0%,100%{transform:translate(0,0);}25%{transform:translate(-3px,1px);}75%{transform:translate(3px,-1px);}}
+
+  /* ===== 叙事面板 ===== */
+  .narrative{
+    width:100%;max-width:1060px;background:rgba(255,255,255,.82);
+    backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+    border:1px solid rgba(255,255,255,.95);border-top:none;
+    border-radius:0 0 16px 16px;padding:14px 18px;min-height:74px;
+    display:flex;flex-direction:column;gap:8px;
+  }
+  .narrative .step-tag{font-size:12px;font-weight:700;color:#a06a12;}
+  .narrative .step-text{font-size:14px;line-height:1.7;color:var(--ink);}
+  .narrative .step-delta{font-size:12px;color:var(--ink2);display:flex;gap:14px;flex-wrap:wrap;}
+  /* 科普知识卡（每个决策/事件后展示） */
+  .know-box{
+    display:none;align-items:flex-start;gap:10px;margin-top:2px;
+    background:linear-gradient(135deg,#eef9f1,#eaf6fd);
+    border:1px dashed #9fd3ae;border-radius:12px;padding:10px 14px;
+  }
+  .know-box.show{display:flex;animation:knowIn .6s ease both;}
+  @keyframes knowIn{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:none;}}
+  .know-box .kb-ico{font-size:22px;line-height:1.2;}
+  .know-box .kb-body b{font-size:13px;color:#1e7a4a;}
+  .know-box .kb-body p{font-size:12.5px;line-height:1.75;color:#3c5546;margin-top:3px;}
+  /* 事件结果弹窗内的科普条 */
+  .know-inline{
+    margin-top:12px;padding:10px 14px;border-radius:12px;
+    background:linear-gradient(135deg,#eef9f1,#eaf6fd);border:1px dashed #9fd3ae;
+    font-size:12.5px;line-height:1.75;color:#3c5546;
+  }
+  .know-inline b{color:#1e7a4a;}
+  .delta-neg{color:var(--red);font-weight:600;}
+  .delta-pos{color:var(--green);font-weight:600;}
+  .narrative .actions{display:flex;gap:10px;margin-top:2px;flex-wrap:wrap;}
+
+  /* ===== 卡片区 ===== */
+  .cards-title{width:100%;max-width:1060px;font-size:14px;font-weight:700;margin:18px 0 8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+  .cards-title .hint{font-weight:400;font-size:12px;color:var(--ink2);}
+  .cards{
+    width:100%;max-width:1060px;display:grid;
+    grid-template-columns:repeat(auto-fill,minmax(225px,1fr));gap:10px;
+  }
+  .card{
+    background:rgba(255,255,255,.85);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
+    border:1.5px solid rgba(255,255,255,.95);border-radius:14px;
+    padding:12px 14px;cursor:pointer;transition:.18s;text-align:left;
+    box-shadow:0 2px 8px rgba(30,60,90,.07);
+  }
+  .card:hover:not(:disabled){border-color:var(--green);transform:translateY(-2px);box-shadow:0 5px 12px rgba(46,158,91,.15);}
+  .card:disabled{opacity:.45;cursor:not-allowed;}
+  .card .c-head{font-size:14px;font-weight:700;display:flex;align-items:center;gap:6px;}
+  .card .c-desc{font-size:12px;color:var(--ink2);margin-top:5px;line-height:1.55;}
+  .card .c-tags{margin-top:7px;display:flex;gap:6px;flex-wrap:wrap;}
+  .tag{font-size:10.5px;border-radius:999px;padding:2px 8px;font-weight:600;}
+  .tag.econ{background:#fdf3e3;color:#a06a12;}
+  .tag.protect{background:#e7f6ec;color:#227a44;}
+  .tag.risk{background:#fdeceb;color:#b0433c;}
+
+  /* ===== 弹窗 ===== */
+  .overlay{
+    position:fixed;inset:0;background:rgba(20,35,50,.45);
+    display:flex;align-items:center;justify-content:center;z-index:50;padding:16px;
+  }
+  .modal{
+    background:#fff;border-radius:18px;max-width:540px;width:100%;
+    padding:24px 26px;box-shadow:0 18px 50px rgba(0,0,0,.25);
+    max-height:84vh;overflow:auto;animation:fadeIn .35s ease both;
+  }
+  .modal h3{font-size:17px;margin-bottom:10px;display:flex;align-items:center;gap:8px;}
+  .modal .m-body{font-size:14px;line-height:1.8;color:var(--ink);}
+  .modal .m-actions{margin-top:18px;display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;}
+  .modal .stat-row{display:flex;justify-content:space-between;font-size:13px;padding:6px 0;border-bottom:1px dashed var(--line);}
+  .modal .stat-row b{font-variant-numeric:tabular-nums;}
+  .ending-badge{font-size:30px;text-align:center;margin-bottom:6px;}
+  /* 关卡选择 */
+  .level-card{
+    width:100%;text-align:left;border:1.5px solid var(--line);border-radius:14px;
+    background:#fbfdff;padding:13px 16px;margin-top:10px;cursor:pointer;transition:.18s;
+  }
+  .level-card:hover:not(:disabled){border-color:var(--green);box-shadow:0 4px 12px rgba(46,158,91,.15);transform:translateY(-1px);}
+  .level-card:disabled{opacity:.5;cursor:not-allowed;}
+  .level-card .lv-name{font-weight:700;font-size:15px;display:flex;justify-content:space-between;align-items:center;}
+  .level-card .lv-desc{font-size:12px;color:var(--ink2);margin-top:5px;line-height:1.6;}
+  .level-card .lv-stars{color:#e0a52e;font-size:13px;letter-spacing:2px;}
+  .event-choice{
+    width:100%;text-align:left;border:1.5px solid var(--line);border-radius:12px;
+    background:#fbfdff;padding:11px 14px;margin-top:9px;cursor:pointer;transition:.15s;
+    animation:choiceIn .4s ease both;
+  }
+  @keyframes choiceIn{from{opacity:0;transform:translateX(-16px);}to{opacity:1;transform:none;}}
+  @keyframes dealIn{from{opacity:0;transform:translateY(18px) scale(.95);}to{opacity:1;transform:none;}}
+  .card.deal{animation:dealIn .42s cubic-bezier(.2,.8,.3,1.15) both;}
+  .event-choice:hover{border-color:var(--blue);background:#f2f9fe;}
+  .event-choice .ec-label{font-weight:700;font-size:14px;}
+  .event-choice .ec-desc{font-size:12px;color:var(--ink2);margin-top:3px;line-height:1.55;}
+
+  /* 成就 toast */
+  #toast{
+    position:fixed;top:18px;left:50%;transform:translateX(-50%) translateY(-80px);
+    background:#fff8e1;border:1.5px solid #e8c35a;color:#7a5a10;
+    padding:10px 22px;border-radius:999px;font-size:14px;font-weight:600;
+    box-shadow:0 8px 22px rgba(0,0,0,.15);z-index:85;transition:transform .45s ease;pointer-events:none;
+  }
+  #toast.show{transform:translateX(-50%) translateY(0);}
+
+  footer{max-width:1060px;font-size:11.5px;color:var(--ink2);margin-top:22px;line-height:1.7;text-align:center;}
+  .legend{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;}
+  /* ===== 卷首·人物志（沉浸式角色介绍） ===== */
+  #castVeil{
+    position:fixed;inset:0;z-index:82;overflow:hidden;display:none;
+    align-items:center;justify-content:center;flex-direction:column;
+    background:linear-gradient(180deg,#0d2b33 0%,#14444d 45%,#1d6a68 75%,#2a8f7d 100%);
+  }
+  #castVeil.show{display:flex;}
+  #castVeil.bye{opacity:0;pointer-events:none;transition:opacity .6s ease;}
+  .cast-kicker{font-size:12px;color:#8fd0be;letter-spacing:6px;animation:riseUp .8s ease both;}
+  .cast-head{font-size:26px;font-weight:900;color:#eafcf4;letter-spacing:6px;margin:8px 0 4px;animation:riseUp .8s ease both .1s;}
+  .cast-sub{font-size:12px;color:#9fd8c8;letter-spacing:2px;animation:riseUp .8s ease both .2s;}
+  .cast-card{
+    width:min(560px,88vw);margin-top:22px;padding:30px 34px 26px;text-align:center;
+    background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.16);
+    border-radius:22px;backdrop-filter:blur(10px);box-shadow:0 18px 50px rgba(0,0,0,.3);
+    animation:castIn .65s cubic-bezier(.2,.9,.3,1.2) both;
+  }
+  @keyframes castIn{from{opacity:0;transform:translateY(34px) scale(.94);}to{opacity:1;transform:none;}}
+  .cast-avatar{
+    width:96px;height:96px;margin:0 auto 6px;border-radius:50%;font-size:52px;
+    display:flex;align-items:center;justify-content:center;
+    background:radial-gradient(circle at 32% 28%,rgba(255,255,255,.28),rgba(255,255,255,.06));
+    border:2px solid rgba(255,255,255,.35);box-shadow:0 8px 26px rgba(0,0,0,.3);
+    animation:floaty 3.6s ease-in-out infinite;
+  }
+  .cast-name{font-size:22px;font-weight:900;color:#ffe9a8;letter-spacing:3px;margin-top:4px;}
+  .cast-role{
+    display:inline-block;margin-top:6px;padding:3px 14px;border-radius:999px;
+    font-size:12px;font-weight:700;letter-spacing:2px;color:#0d2b33;
+    background:linear-gradient(180deg,#9fe6c8,#5fc4a0);
+  }
+  .cast-desc{margin-top:14px;font-size:13.5px;color:#d8f3e9;line-height:1.95;}
+  .cast-quote{
+    margin-top:14px;padding:12px 16px;border-left:3px solid #f4c34d;
+    background:rgba(0,0,0,.14);border-radius:0 12px 12px 0;
+    font-size:13px;color:#fdf3d0;line-height:1.8;text-align:left;
+  }
+  .cast-dots{display:flex;gap:8px;justify-content:center;margin-top:20px;}
+  .cast-dot{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.28);transition:.3s;}
+  .cast-dot.on{background:#f4c34d;transform:scale(1.35);box-shadow:0 0 8px rgba(244,195,77,.7);}
+  .cast-actions{display:flex;gap:12px;margin-top:18px;align-items:center;justify-content:center;animation:riseUp .8s ease both .3s;}
+  .cast-next{
+    padding:11px 40px;font-size:15px;font-weight:800;letter-spacing:3px;border:none;border-radius:999px;cursor:pointer;color:#0d2b33;
+    background:linear-gradient(180deg,#ffe28a,#f4c34d);box-shadow:0 6px 22px rgba(244,195,77,.4);
+  }
+  .cast-next:hover{filter:brightness(1.07);}
+  .cast-skip{
+    padding:9px 20px;font-size:12.5px;letter-spacing:2px;cursor:pointer;border-radius:999px;
+    border:1px solid rgba(255,255,255,.35);background:transparent;color:#bfe6d8;
+  }
+  .cast-skip:hover{background:rgba(255,255,255,.1);}
+  /* 人物志收幕过场字幕 */
+  .cast-out{
+    font-size:16px;color:#eafcf4;line-height:2.3;text-align:center;padding:26px 6px 14px;
+    animation:castOutIn 1.5s ease both;
+  }
+  .cast-out b{color:#ffe9a8;letter-spacing:2px;}
+  @keyframes castOutIn{from{opacity:0;transform:translateY(12px);}to{opacity:1;transform:none;}}
+
+  /* ===== 行动效果大汇报（打牌后的全屏数字动画，替代"小框看不清"） ===== */
+  #fxVeil{
+    position:fixed;inset:0;z-index:83;pointer-events:none;display:none;
+    align-items:center;justify-content:center;flex-direction:column;gap:12px;
+  }
+  #fxVeil.show{display:flex;}
+  .fx-title{
+    font-size:15px;font-weight:900;letter-spacing:3px;color:#fff;
+    background:rgba(23,48,62,.88);padding:8px 26px;border-radius:999px;
+    box-shadow:0 8px 26px rgba(0,0,0,.3);animation:fxTitle .45s cubic-bezier(.2,.9,.3,1.3) both;
+  }
+  @keyframes fxTitle{from{opacity:0;transform:translateY(-26px) scale(.8);}to{opacity:1;transform:none;}}
+  .fx-sum{font-size:17px;font-weight:900;letter-spacing:2px;padding:6px 22px;border-radius:999px;animation:fxTitle .45s cubic-bezier(.2,.9,.3,1.3) both .15s;}
+  .fx-sum.good{color:#eafff2;background:linear-gradient(180deg,#2ea23f,#1f7d31);box-shadow:0 6px 22px rgba(46,162,63,.45);}
+  .fx-sum.bad{color:#fff1ef;background:linear-gradient(180deg,#d9534a,#a8322b);box-shadow:0 6px 22px rgba(217,83,74,.45);}
+  .fx-sum.mid{color:#fffbe8;background:linear-gradient(180deg,#c99a2e,#9a7420);box-shadow:0 6px 22px rgba(201,154,46,.4);}
+  .fx-row{display:flex;flex-wrap:wrap;gap:12px;justify-content:center;max-width:82vw;}
+  .fx-chip{
+    display:flex;align-items:center;gap:9px;padding:13px 22px;border-radius:16px;
+    background:rgba(255,255,255,.96);box-shadow:0 10px 30px rgba(0,0,0,.28);
+    animation:fxChip .5s cubic-bezier(.2,.9,.3,1.4) both;
+  }
+  @keyframes fxChip{from{opacity:0;transform:translateY(34px) scale(.5);}60%{transform:translateY(-6px) scale(1.06);}to{opacity:1;transform:none;}}
+  .fx-chip .fxc-ico{font-size:30px;}
+  .fx-chip .fxc-name{font-size:13px;font-weight:700;color:#5a6b7d;}
+  .fx-chip .fxc-val{font-size:26px;font-weight:900;letter-spacing:1px;font-variant-numeric:tabular-nums;}
+  .fx-chip.up .fxc-val{color:#1f9d4d;}
+  .fx-chip.down .fxc-val{color:#c0392b;}
+  .fx-chip .fxc-badge{font-size:11px;font-weight:800;color:#fff;background:#e67e22;border-radius:999px;padding:2px 8px;}
+  #fxVeil.out .fx-title,#fxVeil.out .fx-sum,#fxVeil.out .fx-chip{animation:fxOut .4s ease both !important;}
+  @keyframes fxOut{to{opacity:0;transform:translateY(-22px);}}
+
+  /* ===== 宣传海报（社区宣传卡弹出，可学习的科普海报） ===== */
+  #posterVeil{
+    position:fixed;inset:0;z-index:84;display:none;
+    align-items:center;justify-content:center;background:rgba(15,30,42,.55);padding:16px;
+  }
+  #posterVeil.show{display:flex;}
+  .poster{
+    width:min(430px,92vw);max-height:86vh;overflow:auto;background:#fdf9ee;color:#2c3a33;
+    border-radius:10px;padding:26px 26px 20px;box-shadow:0 24px 70px rgba(0,0,0,.45);
+    border:10px solid #fff;outline:1px solid #e3d9bd;
+    transform:rotate(-1.2deg);animation:posterIn .55s cubic-bezier(.2,.9,.3,1.25) both;
+  }
+  @keyframes posterIn{from{opacity:0;transform:rotate(-8deg) translateY(60px) scale(.7);}to{opacity:1;transform:rotate(-1.2deg) translateY(0) scale(1);}}
+  .poster-tag{display:inline-block;font-size:11px;font-weight:800;letter-spacing:3px;color:#fff;background:#2e7d4f;padding:3px 12px;border-radius:4px;}
+  .poster-title{font-size:24px;font-weight:900;letter-spacing:2px;margin:12px 0 4px;color:#1d5c38;line-height:1.4;}
+  .poster-sub{font-size:12px;color:#8a7f63;letter-spacing:1px;}
+  .poster-divider{height:3px;background:repeating-linear-gradient(90deg,#2e7d4f 0 14px,transparent 14px 22px);margin:14px 0;}
+  .poster-item{display:flex;gap:10px;margin-top:11px;font-size:13px;line-height:1.75;}
+  .poster-item .p-ico{font-size:20px;flex:none;}
+  .poster-item b{color:#1d5c38;}
+  .poster-stamp{
+    margin:16px auto 4px;width:fit-content;padding:6px 18px;
+    border:2.5px solid #c0392b;color:#c0392b;font-weight:900;font-size:14px;letter-spacing:3px;
+    border-radius:6px;transform:rotate(-6deg);opacity:.85;
+    animation:stampIn .4s cubic-bezier(.3,1.6,.5,1) both .8s;
+  }
+  /* 海报·因果链流程条 */
+  .poster-chain{
+    display:flex;align-items:stretch;gap:5px;margin:4px 0 4px;
+  }
+  .pc-step{
+    flex:1;text-align:center;font-size:10.5px;font-weight:700;line-height:1.45;color:#3c4c44;
+    background:#eef5ec;border:1.5px solid #cfe0cd;border-radius:9px;padding:8px 3px;
+    animation:fxChip .45s cubic-bezier(.2,.9,.3,1.3) both;
+  }
+  .pc-step:nth-child(1){animation-delay:.15s;} .pc-step:nth-child(3){animation-delay:.3s;}
+  .pc-step:nth-child(5){animation-delay:.45s;} .pc-step:nth-child(7){animation-delay:.6s;}
+  .pc-step .pc-ico{display:block;font-size:19px;margin-bottom:3px;}
+  .pc-step.bad{background:#fdeceb;border-color:#f2c8c4;color:#a8322b;}
+  .pc-arrow{align-self:center;font-weight:900;color:#8aa894;animation:fxTitle .4s ease both;}
+  .pc-arrow:nth-child(2){animation-delay:.25s;} .pc-arrow:nth-child(4){animation-delay:.4s;} .pc-arrow:nth-child(6){animation-delay:.55s;}
+  /* 海报·"宣传有什么用"板块 */
+  .poster-why{
+    margin-top:14px;background:#fff8e1;border:1.5px dashed #e0b64f;border-radius:10px;
+    padding:12px 14px;animation:fxTitle .5s ease both .7s;
+  }
+  .pw-title{font-size:14.5px;font-weight:900;color:#8a5a10;letter-spacing:1px;}
+  .pw-text{margin-top:6px;font-size:12.5px;line-height:1.85;color:#6b5216;}
+  @keyframes stampIn{from{opacity:0;transform:rotate(-6deg) scale(2.4);}to{opacity:.85;transform:rotate(-6deg) scale(1);}}
+  .poster-foot{font-size:11px;color:#a2977a;text-align:center;margin-top:8px;letter-spacing:2px;}
+  .poster-close{display:block;margin:16px auto 0;padding:10px 38px;border:none;border-radius:999px;cursor:pointer;
+    font-size:14px;font-weight:800;letter-spacing:2px;color:#fff;background:linear-gradient(180deg,#2ea23f,#1f7d31);box-shadow:0 5px 16px rgba(46,162,63,.4);}
+  .poster-close:hover{filter:brightness(1.07);}
+
+  /* ===== 直播数据战报（云端研学直播弹出） ===== */
+  #liveVeil{
+    position:fixed;inset:0;z-index:84;display:none;
+    align-items:center;justify-content:center;background:rgba(15,30,42,.55);padding:16px;
+  }
+  #liveVeil.show{display:flex;}
+  .live-panel{
+    width:min(420px,92vw);background:#171e2c;color:#e8eefc;border-radius:18px;
+    padding:24px 26px 20px;box-shadow:0 24px 70px rgba(0,0,0,.5);
+    animation:fxChip .5s cubic-bezier(.2,.9,.3,1.4) both;
+  }
+  .live-head{display:flex;align-items:center;gap:8px;font-size:15px;font-weight:800;}
+  .live-dot{width:10px;height:10px;border-radius:50%;background:#ff4d4f;animation:twinkle 1.2s ease-in-out infinite;}
+  .live-title{font-size:13px;color:#9fb0cc;margin-top:2px;}
+  .live-big{font-size:40px;font-weight:900;text-align:center;margin:14px 0 2px;color:#ffe28a;font-variant-numeric:tabular-nums;animation:fxChip .5s cubic-bezier(.2,.9,.3,1.4) both .2s;}
+  .live-big-label{text-align:center;font-size:12px;color:#9fb0cc;}
+  .live-row{display:flex;justify-content:space-between;font-size:13.5px;padding:8px 2px;border-bottom:1px dashed rgba(255,255,255,.14);opacity:0;animation:liveRow .45s ease both;}
+  .live-row:nth-child(1){animation-delay:.35s;} .live-row:nth-child(2){animation-delay:.5s;} .live-row:nth-child(3){animation-delay:.65s;}
+  @keyframes liveRow{from{opacity:0;transform:translateX(-14px);}to{opacity:1;transform:none;}}
+  .live-row b{color:#7fe3a8;font-variant-numeric:tabular-nums;}
+  .live-verdict{
+    margin-top:14px;text-align:center;font-size:17px;font-weight:900;letter-spacing:2px;color:#7fe3a8;
+    animation:fxTitle .5s cubic-bezier(.2,.9,.3,1.3) both .85s;
+  }
+  .live-close{display:block;margin:16px auto 0;padding:10px 38px;border:none;border-radius:999px;cursor:pointer;
+    font-size:14px;font-weight:800;letter-spacing:2px;color:#171e2c;background:linear-gradient(180deg,#ffe28a,#f4c34d);}
+
+  /* ===== 大知识弹窗（每选一个选项自动弹出） ===== */
+  #knowVeil{
+    position:fixed;inset:0;z-index:84;display:none;
+    align-items:center;justify-content:center;background:rgba(15,30,42,.55);padding:16px;
+  }
+  #knowVeil.show{display:flex;}
+  .know-big{
+    width:min(520px,92vw);max-height:84vh;overflow:auto;
+    background:linear-gradient(160deg,#f2fbf5 0%,#e2f5e9 100%);
+    border-radius:20px;padding:28px 30px 22px;text-align:center;
+    box-shadow:0 24px 70px rgba(0,0,0,.45);border:2px solid #bfe3cb;
+    animation:knowIn .55s cubic-bezier(.2,.9,.3,1.25) both;
+  }
+  @keyframes knowIn{from{opacity:0;transform:translateY(46px) scale(.82) rotate(-1.5deg);}to{opacity:1;transform:none;}}
+  .know-big .kb-badge{
+    display:inline-block;font-size:12px;font-weight:900;letter-spacing:4px;color:#fff;
+    background:linear-gradient(180deg,#2ea23f,#1f7d31);padding:5px 20px;border-radius:999px;
+    box-shadow:0 4px 14px rgba(46,162,63,.35);
+  }
+  .know-big .kb-ico{font-size:52px;display:block;margin:14px 0 6px;animation:floaty 3.4s ease-in-out infinite;}
+  .know-big .kb-title{font-size:21px;font-weight:900;color:#1d5c38;letter-spacing:1px;line-height:1.5;}
+  .know-big .kb-divider{height:3px;width:70px;margin:12px auto;background:repeating-linear-gradient(90deg,#2e7d4f 0 10px,transparent 10px 16px);border-radius:2px;}
+  .know-big .kb-text{font-size:15.5px;line-height:2;color:#33463c;text-align:left;}
+  .know-big .kb-text b{color:#1e7a4a;}
+  .know-big .kb-actions{margin-top:18px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap;}
+  .know-big .kb-ok{
+    padding:11px 40px;border:none;border-radius:999px;cursor:pointer;
+    font-size:14.5px;font-weight:800;letter-spacing:2px;color:#fff;
+    background:linear-gradient(180deg,#2ea23f,#1f7d31);box-shadow:0 5px 16px rgba(46,162,63,.4);
+  }
+  .know-big .kb-more{
+    padding:11px 22px;border:1.5px solid #9ccdb0;border-radius:999px;cursor:pointer;
+    font-size:13.5px;font-weight:700;color:#227a44;background:#fff;
+  }
+  .know-big .kb-more:hover{background:#eafaf0;}
+  .know-big .kb-cat{margin-top:14px;font-size:11px;color:#7fa38d;letter-spacing:2px;}
+
+  /* ===== 场景响应动画：树摇晃/倾垂/倒下/复苏 + 海水渐变 ===== */
+  #treeLayer > g{
+    transform-box:fill-box;transform-origin:50% 100%;
+    transition:transform 1.8s ease, filter 1.8s ease;
+  }
+  #treeLayer > g.shake{animation:treeShake .55s ease-in-out 3;}
+  @keyframes treeShake{0%,100%{transform:rotate(0deg);}30%{transform:rotate(-2.6deg);}70%{transform:rotate(2.6deg);}}
+  #treeLayer > g.droop{animation:none;transform:rotate(3.2deg);}   /* 虚弱：停住摇摆，微微倾垂 */
+  #treeLayer > g.dead{animation:none;transform:rotate(76deg);filter:grayscale(.85) brightness(.8);}   /* 死亡：停摆+倒下+褪色 */
+  #treeLayer > g.revive{animation:treeRevive .9s cubic-bezier(.2,.8,.3,1.2);}
+  @keyframes treeRevive{
+    0%{transform:rotate(76deg);filter:grayscale(.85) brightness(.8);}
+    60%{transform:rotate(-4deg);filter:none;}
+    100%{transform:rotate(0deg);filter:none;}
+  }
+</style>
+</head>
+<body>
+<div id="bgDeco" aria-hidden="true"></div>
+
+<!-- 游戏开场标题画面 -->
+<div id="introVeil">
+  <div class="intro-star" style="width:3px;height:3px;top:12%;left:18%;"></div>
+  <div class="intro-star" style="width:2px;height:2px;top:22%;left:74%;animation-delay:.8s;"></div>
+  <div class="intro-star" style="width:3px;height:3px;top:8%;left:52%;animation-delay:1.4s;"></div>
+  <div class="intro-star" style="width:2px;height:2px;top:30%;left:34%;animation-delay:2s;"></div>
+  <div class="intro-star" style="width:2px;height:2px;top:16%;left:88%;animation-delay:1.1s;"></div>
+  <div class="intro-title-wrap">
+    <span class="intro-leaf">🌿</span>
+    <div class="intro-title">红树林守护者</div>
+    <div class="intro-sub">模 拟 器 · 交 互 科 普 游 戏</div>
+  </div>
+  <div class="intro-tag">一部关于<b>团水虱</b>与<b>红树林</b>的生态故事——<br>你将扮演一位海岸保护区管理员，<br>用一次次决策，决定这片森林的命运。</div>
+  <button class="intro-btn" id="introStart">▶ 开 始 游 戏</button>
+  <div class="intro-acc">选择账号：
+    <button class="acc-chip" data-acc="1">账号1</button>
+    <button class="acc-chip" data-acc="2">账号2</button>
+    <button class="acc-chip" data-acc="3">账号3</button>
+    <button class="acc-chip" data-acc="guest">🚪 访客</button>
+  </div>
+  <div class="intro-ver">WORKBUDDY STUDIO · 生态科普系列 第一部</div>
+  <div class="intro-wave"><i></i><i class="w2"></i></div>
+</div>
+
+<!-- 全屏故事页（序章 / 卷末尾声） -->
+<div id="storyVeil">
+  <div class="story-book">
+    <div class="story-kicker" id="stKicker"></div>
+    <div class="story-title" id="stTitle"></div>
+    <div class="story-divider"></div>
+    <div class="story-paras" id="stParas"></div>
+    <div class="story-foot" id="stFoot" style="display:none;"></div>
+    <div class="story-actions"><button class="btn" id="stBtn"></button></div>
+  </div>
+</div>
+
+<!-- 卷首·人物志（沉浸式村民介绍） -->
+<div id="castVeil">
+  <div class="cast-kicker" id="castKicker">卷 首 · 人 物 志</div>
+  <div class="cast-head" id="castHead">在故事开始之前</div>
+  <div class="cast-sub" id="castSub">先认识一下，这片海岸上的人</div>
+  <div class="cast-card" id="castCard"></div>
+  <div class="cast-dots" id="castDots"></div>
+  <div class="cast-actions">
+    <button class="cast-skip" id="castSkip">跳过介绍 ≫</button>
+    <button class="cast-next" id="castNext">下一位 →</button>
+  </div>
+  <div class="intro-wave"><i></i><i class="w2"></i></div>
+</div>
+
+<!-- 行动效果大汇报（全屏数字动画） -->
+<div id="fxVeil" aria-hidden="true"></div>
+<!-- 宣传海报（社区宣传卡） -->
+<div id="posterVeil" aria-hidden="true"></div>
+<!-- 直播数据战报（云端研学直播） -->
+<div id="liveVeil" aria-hidden="true"></div>
+
+<!-- 大知识弹窗（选选项后自动弹出） -->
+<div id="knowVeil" aria-hidden="true"></div>
+
+<!-- 管理员超能力悬浮按钮（验证通过后显示） -->
+<button id="cheatBtn" style="display:none;">🦸 超能力</button>
+
+<header>
+  <div>
+    <h1>🌿 红树林守护者模拟器</h1>
+    <div class="subtitle">团水虱与红树林退化 —— 理解生态失衡的连锁反应</div>
+  </div>
+  <div class="head-right">
+    <span class="stage-badge" id="stageBadge">选择关卡</span>
+    <div class="head-btns">
+      <div class="btn-row">
+        <button class="btn ghost small" id="accBtn">👤 账号</button>
+        <button class="btn ghost small" id="shopBtn">🛍️ 商店</button>
+        <button class="btn ghost small" id="achBtn">🏆 成就</button>
+        <button class="btn ghost small" id="adminBtn">🔑 管理员</button>
+      </div>
+      <div class="btn-row">
+        <button class="btn ghost small" id="helpBtn">📖 玩法</button>
+        <button class="btn ghost small" id="levelBtn">🗺️ 关卡</button>
+        <button class="btn ghost small" id="restartBtn">🔄 重开</button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- 仪表盘 -->
+<section class="dashboard" id="dashboard">
+  <div class="meter">
+    <div class="m-title"><span>💧 水质健康度</span><span class="val" id="v-water">100</span></div>
+    <div class="bar"><i id="b-water"></i></div>
+    <div class="m-note" id="n-water">清澈</div>
+  </div>
+  <div class="meter">
+    <div class="m-title"><span>🌳 红树健康度</span><span class="val" id="v-tree">100</span></div>
+    <div class="bar"><i id="b-tree"></i></div>
+    <div class="m-note" id="n-tree">强壮</div>
+  </div>
+  <div class="meter">
+    <div class="m-title"><span>🦐 团水虱密度</span><span class="val" id="v-iso">15</span></div>
+    <div class="bar"><i id="b-iso"></i></div>
+    <div class="m-note" id="n-iso">正常（背景成员）</div>
+  </div>
+  <div class="meter">
+    <div class="m-title"><span>🦀 天敌数量</span><span class="val" id="v-pred">100</span></div>
+    <div class="bar"><i id="b-pred"></i></div>
+    <div class="m-note" id="n-pred">充足</div>
+  </div>
+  <div class="meter">
+    <div class="m-title"><span>💰 经济状况</span><span class="val" id="v-econ">0</span></div>
+    <div class="bar"><i id="b-econ"></i></div>
+    <div class="m-note" id="n-econ">收支平衡（每轮支出 −3）</div>
+  </div>
+</section>
+
+<!-- 主场景 -->
+<div class="scene-wrap">
+<svg class="scene" viewBox="0 0 1000 430" id="scene" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="skyG" x1="0" y1="0" x2="0" y2="1">
+      <stop id="skyA" offset="0" stop-color="#bfe7f7"/><stop id="skyB" offset="1" stop-color="#e8f6ec"/>
+    </linearGradient>
+    <linearGradient id="auroraG1" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#4dffbe" stop-opacity=".9"/><stop offset="1" stop-color="#78a0ff" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="auroraG2" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#b978ff" stop-opacity=".85"/><stop offset="1" stop-color="#5affdc" stop-opacity="0"/>
+    </linearGradient>
+    <filter id="softBlur" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="9"/>
+    </filter>
+  </defs>
+  <!-- 天空 -->
+  <rect x="0" y="0" width="1000" height="160" fill="url(#skyG)"/>
+  <circle id="sunC" cx="900" cy="52" r="26" fill="#ffe28a" opacity=".9"/>
+  <!-- 远景装饰：太阳光晕 / 漂移的云 / 飞鸟 -->
+  <circle cx="900" cy="52" r="46" fill="#ffe28a" opacity=".16">
+    <animate attributeName="r" values="42;52;42" dur="6s" repeatCount="indefinite"/>
+  </circle>
+  <g class="birdsG" opacity=".45">
+    <path d="M120 62 q6 -7 12 0 q6 -7 12 0" stroke="#5a7d94" stroke-width="2" fill="none"/>
+    <path d="M172 82 q5 -6 10 0 q5 -6 10 0" stroke="#5a7d94" stroke-width="1.6" fill="none"/>
+    <path d="M96 92 q4 -5 8 0 q4 -5 8 0" stroke="#5a7d94" stroke-width="1.4" fill="none"/>
+  </g>
+  <g class="cloud1"><ellipse cx="0" cy="46" rx="52" ry="13" fill="#fff" opacity=".9"/><ellipse cx="36" cy="38" rx="34" ry="11" fill="#fff" opacity=".9"/></g>
+  <g class="cloud2"><ellipse cx="0" cy="88" rx="62" ry="14" fill="#fff" opacity=".7"/><ellipse cx="-40" cy="80" rx="36" ry="11" fill="#fff" opacity=".7"/></g>
+  <!-- 皮肤专属天空特效（星星/极光/霓虹，由 applySkin 填充） -->
+  <g id="skyFxG"></g>
+  <!-- 台风云层（事件特效） -->
+  <g id="stormClouds" class="hidden">
+    <ellipse cx="300" cy="40" rx="200" ry="34" fill="#6b7a8a" opacity=".8"/>
+    <ellipse cx="620" cy="30" rx="240" ry="38" fill="#55636f" opacity=".8"/>
+    <g class="storm-rain" opacity=".55">
+      <line x1="150" y1="60" x2="140" y2="86" stroke="#9fb4c4" stroke-width="2"/>
+      <line x1="240" y1="66" x2="230" y2="92" stroke="#9fb4c4" stroke-width="2"/>
+      <line x1="340" y1="58" x2="330" y2="84" stroke="#9fb4c4" stroke-width="2"/>
+      <line x1="450" y1="64" x2="440" y2="90" stroke="#9fb4c4" stroke-width="2"/>
+      <line x1="560" y1="56" x2="550" y2="82" stroke="#9fb4c4" stroke-width="2"/>
+      <line x1="660" y1="62" x2="650" y2="88" stroke="#9fb4c4" stroke-width="2"/>
+      <line x1="760" y1="54" x2="750" y2="80" stroke="#9fb4c4" stroke-width="2"/>
+    </g>
+  </g>
+
+  <!-- 海水（潮汐动画组：包含水体、鱼、浮游生物） -->
+  <g class="tide-anim">
+    <rect x="0" y="118" width="1000" height="220" id="seaRect" fill="#58c1e8"/>
+    <path d="M0 118 Q 60 110 120 118 T 240 118 T 360 118 T 480 118 T 600 118 T 720 118 T 840 118 T 960 118 T 1080 118 V 132 H 0 Z" fill="#ffffff" opacity=".35"/>
+    <path d="M0 128 Q 80 122 160 128 T 320 128 T 480 128 T 640 128 T 800 128 T 960 128 V 140 H 0 Z" fill="#ffffff" opacity=".25"/>
+    <g id="planktonLayer"></g>
+    <g id="fishLayer"></g>
+    <!-- 污水管道 -->
+    <g id="pipeG" class="hidden">
+      <rect x="806" y="150" width="120" height="12" rx="5" fill="#8a8f98"/>
+      <line id="pipeFlow" x1="810" y1="186" x2="700" y2="196" stroke="#c9b458" stroke-width="7" stroke-linecap="round"/>
+      <text x="866" y="144" font-size="11" fill="#5a6b7d" text-anchor="middle">排污口</text>
+    </g>
+  </g>
+
+  <!-- 滩涂地形：高潮区→低潮区 -->
+  <path d="M0 300 L1000 340 L1000 430 L0 430 Z" fill="#c8b58c"/>
+  <path d="M0 300 L1000 340 L1000 352 L0 314 Z" fill="#d8c9a4"/>
+  <rect x="6" y="298" width="18" height="120" fill="#7d8a99" opacity=".85"/>
+  <g font-size="9.5" fill="#41506b">
+    <text x="14" y="312" transform="rotate(90 14 312)">潮位标尺</text>
+  </g>
+  <g font-size="11" fill="#7a6a45" opacity=".9">
+    <text x="120" y="322">▲ 高潮区</text>
+    <text x="430" y="348">▲ 中潮区</text>
+    <text x="760" y="368">▲ 低潮区</text>
+  </g>
+
+  <!-- 潮沟 -->
+  <path id="creek" class="clickable" data-k="creek" d="M0 392 C 180 380 300 402 470 396 C 640 390 760 410 1000 398" stroke="#7fb6c9" stroke-width="10" fill="none" stroke-linecap="round" opacity=".85"/>
+
+  <!-- 低洼积水区（养鸭后出现） -->
+  <ellipse id="puddle" class="hidden" cx="250" cy="408" rx="80" ry="12" fill="#9aa64f" opacity=".7"/>
+
+  <!-- 人类设施 -->
+  <g id="duckFarm" class="hidden fade-in">
+    <rect x="820" y="86" width="130" height="52" rx="6" fill="#d9884a"/>
+    <path d="M814 88 L885 56 L956 88 Z" fill="#a85a28"/>
+    <rect x="845" y="106" width="26" height="32" fill="#6b4423"/>
+    <rect x="895" y="102" width="34" height="24" fill="#fdf3e3"/>
+    <text x="885" y="152" font-size="12" fill="#7a4a20" text-anchor="middle">🦆 养鸭场</text>
+  </g>
+  <g id="shrimpPond" class="hidden fade-in">
+    <rect x="6" y="60" width="120" height="58" rx="8" fill="#7fb6c9" stroke="#5a8fa3" stroke-width="3"/>
+    <text x="66" y="94" font-size="13" text-anchor="middle" fill="#1c4a5e">🦐</text>
+    <text x="66" y="134" font-size="12" fill="#3d5a66" text-anchor="middle">虾塘</text>
+  </g>
+  <g id="sewagePlant" class="hidden fade-in">
+    <rect x="170" y="52" width="130" height="66" rx="6" fill="#9fb8c9"/>
+    <circle cx="205" cy="85" r="16" fill="#dfeaf2" stroke="#7d97a8" stroke-width="3"/>
+    <circle cx="252" cy="85" r="16" fill="#dfeaf2" stroke="#7d97a8" stroke-width="3"/>
+    <text x="235" y="132" font-size="12" fill="#41586b" text-anchor="middle">🛡️ 污水处理厂</text>
+  </g>
+  <g id="chemPlant" class="hidden fade-in">
+    <rect x="380" y="46" width="110" height="72" rx="6" fill="#8d8478"/>
+    <rect x="404" y="20" width="14" height="30" fill="#6d675e"/>
+    <rect x="452" y="26" width="12" height="24" fill="#6d675e"/>
+    <circle cx="411" cy="18" r="7" fill="#c9c2b8" opacity=".8"/>
+    <circle cx="458" cy="24" r="6" fill="#c9c2b8" opacity=".7"/>
+    <text x="435" y="132" font-size="12" fill="#5a544c" text-anchor="middle">🏭 化工厂</text>
+  </g>
+
+  <!-- 鸭群 -->
+  <g id="duckFlock" class="hidden fade-in">
+    <g class="duck-bob"><text x="300" y="360" font-size="22">🦆</text></g>
+    <g class="duck-bob" style="animation-delay:.3s"><text x="336" y="372" font-size="22">🦆</text></g>
+    <g class="duck-bob" style="animation-delay:.6s"><text x="272" y="374" font-size="22">🦆</text></g>
+  </g>
+
+  <!-- 枯木与木桩 -->
+  <g class="clickable" data-k="wood">
+    <rect x="586" y="372" width="86" height="14" rx="7" fill="#7d5a3a"/>
+    <circle cx="592" cy="379" r="7" fill="#a5825c"/>
+    <rect x="720" y="380" width="12" height="26" rx="4" fill="#6d4d30"/>
+    <rect x="940" y="378" width="12" height="24" rx="4" fill="#6d4d30"/>
+  </g>
+
+  <!-- 红树 ×5（动态生成） -->
+  <g id="treeLayer"></g>
+
+  <!-- 螃蟹与团水虱（动态生成） -->
+  <g id="crabLayer"></g>
+  <g id="isoLayer"></g>
+
+  <!-- 点击提示 -->
+  <text x="500" y="26" font-size="12.5" fill="#3d6a8a" text-anchor="middle" id="exploreTip">💡 点击场景中的红树、螃蟹、小鱼、团水虱、枯木、潮沟等元素，发现知识彩蛋！</text>
+</svg>
+<!-- 章节过场卡（淡入淡出，不阻挡点击） -->
+<div id="chapterVeil"><div class="cv-box">
+  <div class="cv-day" id="cvDay"></div>
+  <div class="cv-beat" id="cvBeat"></div>
+</div></div>
+</div>
+
+<!-- 叙事面板 -->
+<section class="narrative" id="narrative">
+  <div class="step-tag" id="stepTag">🗺️ 请先选择一个关卡</div>
+  <div class="step-text" id="stepText">每个关卡是一段不同的管理故事：污染源不同、初始条件不同、随机事件不同。建议从第 1 关开始。</div>
+  <div class="step-delta" id="stepDelta"></div>
+  <div class="know-box" id="knowBox"></div>
+  <div class="actions" id="stepActions">
+    <button class="btn blue" onclick="showLevelSelect()">🗺️ 选择关卡开始</button>
+  </div>
+</section>
+
+<!-- 决策卡片区 -->
+<div class="cards-title" id="cardsTitle" style="display:none;">🃏 本轮可选方案 <span class="hint">上级只批 3 个方案 —— 管理员一次只能集中办一件事</span>
+  <button class="btn ghost small" id="rerollBtn" style="display:none;">🔄 换一批（每轮1次）</button>
+  <button class="btn ghost small" id="dblBtn" style="display:none;">📋 双倍券</button>
+</div>
+<section class="cards" id="cards" style="display:none;"></section>
+
+<footer>
+  <div class="legend">
+    <span>💚 涨 = 绿色（健康）</span><span>❤️ 跌 = 红色（危险）</span>
+    <span>🔬 科普主题：有孔团水虱 <i>Sphaeroma terebrans</i> 及近缘种</span>
+  </div>
+  <div style="margin-top:6px;">红树先因污染、长期淹水、天敌减少而变弱，之后才被团水虱攻破 —— 团水虱是"加速器"，而非"元凶"。</div>
+</footer>
+
+<!-- 弹窗 -->
+<div class="overlay hidden" id="overlay">
+  <div class="modal" id="modal"></div>
+</div>
+<div id="toast"></div>
+
+<script>
+'use strict';
+/* ================= 常量与状态 ================= */
+const $ = id => document.getElementById(id);
+const clamp = v => (typeof v!=='number' || isNaN(v)) ? 0 : Math.max(0, Math.min(100, Math.round(v)));   // NaN 一律兜底为 0，防止状态污染
+const svgNS = 'http://www.w3.org/2000/svg';
+const TREES = [
+  {x:210, zone:'高潮区'}, {x:370, zone:'中潮区'}, {x:520, zone:'中潮区'},
+  {x:690, zone:'低潮区'}, {x:850, zone:'低潮区'}
+];
+const UPKEEP = -3;          // 每轮固定支出
+const BANKRUPT = -30;       // 经济崩溃线
+
+let S = {};
+/* ================= 账号系统（3 账号 + 访客，存档按账号隔离） ================= */
+let ACC = localStorage.getItem('mg_account') || '1';
+if(!localStorage.getItem('mg_account')) localStorage.setItem('mg_account','1');
+function K(key){ return 'mg_a'+ACC+'_'+key; }          // 当前账号的存储键
+function isGuest(){ return ACC==='guest'; }
+function accCoins(id){ return parseInt(localStorage.getItem('mg_a'+id+'_coins')||'0',10); }
+(function migrateOldSaves(){                            // 旧存档（无账号时代）整体迁移到账号1
+  if(localStorage.getItem('mg_migrated')) return;
+  const map={'mg_coins':'coins','mg_unlocked':'unlocked','mg_ach':'ach','mg_skin':'skin',
+    'mg_admin':'admin','mg_inv_fund':'inv_fund','mg_inv_double':'inv_double'};
+  for(let i=1;i<=5;i++) map['mg_stars_'+i]='stars_'+i;
+  for(const o in map){ const v=localStorage.getItem(o); if(v!==null) localStorage.setItem('mg_a1_'+map[o], v); }
+  localStorage.setItem('mg_migrated','1');
+})();
+
+/* ===== 科普知识库：每个决策/事件后随机插入一条 ===== */
+const KNOW_TIPS = {
+  pollute:[
+    {t:'富营养化', x:'一滴污水进入大海后，氮磷营养盐会让藻类疯狂繁殖——这叫"富营养化"。藻类死亡分解时会耗尽水中氧气，其他生物就遭殃了。'},
+    {t:'看不见的污染', x:'污染不只看得见的垃圾：营养盐、重金属、药物残留溶解在水里，肉眼清澈的海水也可能已经"生病"。'},
+    {t:'鸭粪的力量', x:'一个中型养鸭场每天的粪便排放量相当于一个小型村庄——这些营养物质进入海湾，足够"喂饱"整片水域的藻类。'},
+  ],
+  pond:[
+    {t:'虾塘的代价', x:'传统虾塘每产 1 公斤虾，需要换水约 10 吨——富含饲料残渣和排泄物的废水直排入海，是近岸污染的重要来源。'},
+    {t:'围堰的危害', x:'虾塘围堰会切断潮沟，让红树林"喝不到"规律的海水。水文一乱，红树的呼吸根长期泡水，就会慢慢闷坏。'},
+  ],
+  chem:[
+    {t:'化工废水', x:'化工废水中可能含重金属和难降解有机物，它们会沉积在底泥里，被底栖生物吸收，再沿着食物链层层富集——最终回到人类餐桌。'},
+    {t:'先处理后排放', x:'"先污染后治理"的代价是"先污染"成本的许多倍。废水处理线虽然贵，但远比修复一片死掉的海湾便宜。'},
+  ],
+  tourism:[
+    {t:'生态旅游', x:'好的生态旅游是"只留下脚印，只带走照片"：架空栈道不踩滩涂、限速航行不扰水鸟、观测距离保持在不惊扰动物的范围内。'},
+    {t:'干扰也是污染', x:'噪声、船只尾流、垃圾，甚至太多游客的脚步，都会让滩涂动物减少活动、被迫迁移——这类"干扰污染"常常被忽视。'},
+  ],
+  treat:[
+    {t:'污水处理厂', x:'污水处理厂通过沉淀、生物降解等工序去除 80% 以上的污染物——它就像给海湾装了一个"人工肾"。'},
+    {t:'治标更要治本', x:'污水处理厂能改善水质，但如果污染源（鸭场、工厂）还在源源不断排放，处理厂也"治不过来"。截断源头永远是第一步。'},
+  ],
+  overfish:[
+    {t:'天敌的刹车', x:'螃蟹和小鱼是团水虱的天然"刹车"。过度捕捞松开了刹车，团水虱数量就会像脱缰野马——这就是"营养级联"效应。'},
+    {t:'休渔期的智慧', x:'设置休渔期后，鱼类种群通常 2~3 年就能明显恢复。"让海喘口气"，渔业反而更可持续。'},
+  ],
+  plant:[
+    {t:'种树先治水', x:'红树苗对水质非常敏感：在污染水域种树，成活率可能不到 20%；水质达标后，可达 80% 以上。所以"先治理，后种植"是铁律。'},
+    {t:'红树是胎生植物', x:'很多红树植物的种子在母树上就发芽长成"笔状胚轴"，掉下来插进泥里就能扎根——像小树"生孩子"一样，所以红树被称为"胎生植物"。'},
+  ],
+  debris:[
+    {t:'海洋垃圾', x:'缠在红树气生根上的渔网和塑料袋会阻碍呼吸根透气，还会随潮水磨擦损伤树皮。每年有超过 800 万吨塑料进入全球海洋。'},
+  ],
+  hydro:[
+    {t:'潮沟是红树的血管', x:'潮沟就像红树林的"血管"，负责输送海水、带走代谢物。潮沟被堵，整片林子的"血液循环"都会出问题。'},
+  ],
+  restore:[
+    {t:'生态系统的韧性', x:'生态系统有自我修复能力，但前提是压力源被移除。截断污染后，水质通常几个月好转，而完整群落恢复可能需要 5~10 年。'},
+    {t:'生态散养', x:'"生态散养"模式下，鸭粪被收集做成农家肥，既不排海又变废为宝——循环农业让同一件事有了完全不同的结局。'},
+  ],
+  science:[
+    {t:'监测是管理的眼睛', x:'定期监测水质和生物数量，能在问题变成灾难前发现苗头——就像体检能提前发现疾病。数据是最好的"预警雷达"。'},
+  ],
+  education:[
+    {t:'公众的力量', x:'很多成功的保护案例都始于社区居民的观念转变。当村民理解"留住螃蟹就是留住红树"，保护就有了最坚实的同盟军。'},
+  ],
+  typhoon:[
+    {t:'天然防波堤', x:'100 米宽的红树林带能消减 66% 以上的波浪能量——它们是海岸线上最便宜的"防波堤"，还不用维修。'},
+    {t:'灾后的森林', x:'2004 年印度洋海啸后，研究发现有红树林保护的村庄损失明显更小。健康红树靠致密的根系网扛住风浪，虚弱的林子则会被连根拔起。'},
+  ],
+  redtide:[
+    {t:'赤潮', x:'赤潮是海水中某些藻类爆发性增殖的现象，部分藻类还会释放毒素。鱼虾大批窒息死亡时，以滤食为生的团水虱反而可能"吃饱"。'},
+  ],
+  dolphin:[
+    {t:'明星物种', x:'白海豚、候鸟这些"明星物种"是生态系统的旗帜：它们对水质和食物链要求苛刻，它们在，说明整片海是健康的。'},
+  ],
+  inspect:[
+    {t:'如实上报', x:'环境数据造假会让管理决策建立在错误信息上——问题不会因为报表漂亮就消失，只会拖到更难收拾的那天。'},
+  ],
+  misc:[
+    {t:'什么是红树林', x:'红树林是生长在热带、亚热带海岸潮间带的木本植物群落，因树皮中的单宁氧化后显红色而得名。它们是陆地与海洋之间独特的生态系统。'},
+    {t:'团水虱小档案', x:'团水虱是海洋等足类甲壳动物，体长约 1~2 厘米，喜欢钻蛀红树气生根。它们本身是正常生态成员，只有生态失衡时才会变成"破坏王"。'},
+    {t:'一树一世界', x:'一棵健康的红树可以为上百种生物提供家园：鱼虾在根系间育幼，鸟类在枝头筑巢，底栖生物在泥中安家——它是名副其实的"生态公寓楼"。'},
+  ],
+};
+/* 卡片 → 知识主题 */
+const KNOW_MAP={duck:'pollute',shrimp:'pond',direct:'pollute',chem:'chem',tourism:'tourism',
+  plant:'treat',ban:'overfish',newtree:'plant',cleanup:'debris',dredge:'hydro',
+  closeduck:'restore',refit:'chem',shrinkduck:'restore',ripshrimp:'restore',
+  limitboat:'tourism',monitor:'science',stock:'overfish',edu:'education',rescue:'restore'};
+/* 事件 → 知识主题 */
+const EV_MAP={typhoon:'typhoon',inspect:'inspect',redtide:'redtide',dolphin:'dolphin',
+  donor:'restore',bribe:'inspect',adopt:'restore',turtle:'overfish',school:'education',
+  oil:'pollute',oilspill:'pollute',cold:'misc',coldsnap:'misc',upstream:'pollute',comp:'restore',fisher:'overfish',
+  tourdev:'tourism',chemreport:'chem',bonus:'science',bluecarbon:'plant',filming:'tourism'};
+let _knowRecent=[];
+function pickKnow(topic){
+  topic = KNOW_TIPS[topic] ? topic : 'misc';
+  const pool=KNOW_TIPS[topic];
+  let cand=pool.map((t,i)=>({tip:t,k:topic+'#'+i})).filter(o=>!_knowRecent.includes(o.k));
+  if(!cand.length){ _knowRecent=_knowRecent.filter(k=>k.split('#')[0]!==topic); cand=pool.map((t,i)=>({tip:t,k:topic+'#'+i})); }
+  const pick=cand[Math.floor(Math.random()*cand.length)];
+  _knowRecent.push(pick.k); if(_knowRecent.length>6) _knowRecent.shift();
+  return pick.tip;
+}
+/* 叙事面板里的科普卡（带淡入动画） */
+function showKnow(topic){
+  const tip=pickKnow(topic);
+  const box=$('knowBox');
+  box.innerHTML='<span class="kb-ico">📖</span><div class="kb-body"><b>科普时间 · '+tip.t+'</b><p>'+tip.x+'</p></div>';
+  box.classList.remove('show'); void box.offsetWidth; box.classList.add('show');
+}
+/* 大知识弹窗：每选一个选项自动弹出的大卡（带"换一条"） */
+let _knowTopic=null, _afterReportClose=null;
+function closeReport(id){
+  document.getElementById(id).classList.remove('show');
+  if(_afterReportClose){ const f=_afterReportClose; _afterReportClose=null; setTimeout(f, 350); }
+}
+function showKnowBig(topic, force){
+  _knowTopic = KNOW_TIPS[topic] ? topic : 'misc';
+  const tip=pickKnow(_knowTopic);
+  const CAT={pollute:'污染防治',pond:'生态养殖',chem:'工业治理',tourism:'生态旅游',treat:'污水治理',
+    overfish:'可持续渔业',plant:'红树恢复',debris:'海洋垃圾',hydro:'水利工程',restore:'生态修复',
+    science:'蓝碳科学',education:'自然教育',typhoon:'防灾减灾',redtide:'海洋现象',dolphin:'生物多样性',
+    inspect:'巡护监测',misc:'生态小课堂'};
+  const veil=$('knowVeil');
+  veil.innerHTML=
+    '<div class="know-big">'+
+      '<span class="kb-badge">📖 科 普 时 间</span>'+
+      '<span class="kb-ico">🌿</span>'+
+      '<div class="kb-title">'+tip.t+'</div>'+
+      '<div class="kb-divider"></div>'+
+      '<div class="kb-text">'+tip.x+'</div>'+
+      '<div class="kb-actions">'+
+        '<button class="kb-more" onclick="showKnowBig(_knowTopic, true)">🔄 换一条</button>'+
+        '<button class="kb-ok" onclick="document.getElementById(\'knowVeil\').classList.remove(\'show\')">学到了 ✓</button>'+
+      '</div>'+
+      '<div class="kb-cat">—— '+ (CAT[topic]||'生态小课堂') +' · 每一个选择，都藏着一课 ——</div>'+
+    '</div>';
+  if(force){ void veil.offsetWidth; }   // 换一条：重触发入场动画
+  veil.classList.add('show');
+}
+
+function resetState(){
+  S = {water:100, tree:100, iso:15, pred:100, econ:0,
+    duckFarm:false, shrimp:false, sewage:false, banFishing:false, chem:false, tourism:false, direct:false, ambientPipe:false,
+    duckEco:false, chemGreen:false, rerolled:0, hand:null,
+    round:1, stage:'idle', busy:false, wasCritical:false, recovered:false, passiveDone:false,
+    stormGuarded:false, isoClicks:0, explored:new Set(), coinedAch:new Set(),
+    achievements:new Set(JSON.parse(localStorage.getItem(K('ach'))||'[]')),
+    everDirty:false, eventsDone:0, lowTree:100, lowWater:100,
+    dirtySet:new Set(), rejectedBribe:false, _dblArmed:false, _dblMult:1, _trollHeal:0,
+    level:null, extended:false};
+}
+
+/* ================= 关卡定义 ================= */
+const LEVELS = [
+  {id:1, name:'第 1 关 · 宁静海湾', icon:'🌤️', minLevel:1,
+   desc:'一片健康的红树林，村民们想发展经济。决策压力不大，适合熟悉玩法。',
+   goal:'撑过 6 轮，且红树健康度 ≥ 60（经济不低于 −30）',
+   rounds:6, eventChance:0.25, upkeep:-2,
+   start:{water:100, tree:100, iso:15, pred:100, econ:15}},
+  {id:2, name:'第 2 关 · 工业小镇', icon:'🌫️', minLevel:2,
+   desc:'水体已被生活污水轻度污染，化工厂正在洽谈入驻，虾塘也在扩张。钱更紧，诱惑更多。',
+   goal:'撑过 8 轮，且红树健康度 ≥ 60（经济不低于 −30）',
+   rounds:8, eventChance:0.4, upkeep:UPKEEP,
+   start:{water:82, tree:92, iso:28, pred:88, econ:0}},
+  {id:3, name:'第 3 关 · 风暴将至', icon:'🌀', minLevel:3,
+   desc:'生态已经受损，台风季即将来临，随机事件频发。你要在风暴中守住这片林子。',
+   goal:'撑过 10 轮且红树 ≥ 60；或从濒危（<30）恢复到 ≥ 60 触发「挽救结局」',
+   rounds:10, eventChance:0.55, upkeep:UPKEEP,
+   start:{water:70, tree:78, iso:42, pred:68, econ:0}},
+  {id:4, name:'第 4 关 · 重化湾区', icon:'🏭', minLevel:4,
+   desc:'三面环厂的湾区：化工厂、生活直排、虾塘围堰一个不少。这是保护与发展最硬的一仗。',
+   goal:'撑过 12 轮，且红树健康度 ≥ 60（经济不低于 −30）',
+   rounds:12, eventChance:0.5, upkeep:-3,
+   start:{water:60, tree:70, iso:55, pred:55, econ:10}},
+  {id:5, name:'第 5 关 · 国家公园答卷', icon:'🏞️', minLevel:5,
+   desc:'保护区升格在即：既要通过国家评估，又要让小镇过好日子。这是你管理员生涯的毕业考。',
+   goal:'撑过 12 轮且红树 ≥ 75、水质 ≥ 70（经济不低于 −30）；或触发「挽救结局」',
+   rounds:12, eventChance:0.55, upkeep:-3,
+   start:{water:75, tree:85, iso:35, pred:75, econ:0},
+   win:s=> s.tree>=75 && s.water>=70},
+];
+/* ================= 故事叙事系统 ================= */
+/* 序章：每关开场的故事 */
+const PROLOGUES = {
+  1:{title:'序章 · 试用期的新管理员',
+     paras:[
+       '你是刚到任的保护区管理员。管理站里只有一台风扇吱呀作响、一张泛黄的海图，和窗外那片望不到边的绿。',
+       '老站长退休前只留下一句话：<b>"红树林不怕风浪，怕的是人心变着花样折腾它。"</b>',
+       '村里人听说来了新管理员，都在观望——有人想建鸭场，有人想修虾塘，也有人默默希望你能留住这片绿。你的第一个决定，就写在今天的值班日志里。']},
+  2:{title:'序章 · 烟囱竖起的小镇',
+     paras:[
+       '这两年，小镇热闹了起来。生活污水还等着"处理"，虾塘老板在打听政策，化工厂的王老板已经提着礼盒三次登门。',
+       '这一关，<b>钱和绿开始明着较劲</b>。每签一张批文，都会在十年后的海岸线上留下痕迹。',
+       '夜里你翻看老站长的日志，扉页写着：别急着骂谁，先弄清楚每一滴脏水是从哪里来的。']},
+  3:{title:'序章 · 风暴将至',
+     paras:[
+       '台风"海燕"在洋面上生成，云系像一只缓缓睁开的眼睛。',
+       '而你的红树林，还没从去年的污染里缓过来——水质浑浊，气生根上蛀孔斑斑，滩涂上的螃蟹稀稀拉拉。',
+       '周博士发来消息：<b>"生态系统越虚弱，扛极端天气的能力越差。这一季，别再添乱了。"</b>风暴不会等你准备好。']},
+  4:{title:'序章 · 最硬的一仗',
+     paras:[
+       '三面环厂的湾区，风一年到头都把异味送进林子。化工厂的管线像蛛网，虾塘的围堰把潮沟割得七零八落。',
+       '周博士在勘察报告末页写道：<b>"这里的红树，是在替整座城市扛毒。"</b>',
+       '你合上报告，望向窗外——新的烟囱正在浇筑。这一次，没有轻松的选项。']},
+  5:{title:'序章 · 毕业考',
+     paras:[
+       '升格国家级自然保护区的消息传来了，评估组下周就到。评估表上有两栏：<b>生态指标</b>，和<b>民生指标</b>。',
+       '老站长的旧日志，终于可以续写了。',
+       '你把两支笔并排放在桌上——一支签批文，一支写规划。这个故事的最后一章，由你来收笔。']},
+};
+/* 章节节奏：每一轮是一个带标题的故事节拍 */
+const ROUNDS_STORY = {
+  1:[
+    {t:'第一节 · 平静的海面', s:'清晨，你踩着露水走进管理站。潮水正缓缓退去，白鹭落在最高的那棵红树上。'},
+    {t:'第二节 · 第一位来客', s:'上午，管理站的木门被敲响了。来的人带着想法，也带着等待你签字的眼神。'},
+    {t:'第三节 · 涟漪扩散', s:'海面看不出什么变化，但水质监测仪的曲线，已经开始悄悄低头。'},
+    {t:'第四节 · 各怀心思', s:'村民们在码头上议论着什么。有人在算收入，有人在数螃蟹。'},
+    {t:'第五节 · 考验来临', s:'下午起了风。海的颜色，比昨天深了一些。'},
+    {t:'第六节 · 交卷的日子', s:'月末考核就在眼前。老站长的话又响起来：红树林不怕风浪，怕的是人心。'},
+  ],
+  2:[
+    {t:'第一节 · 暗流', s:'上任第一周，你就发现：这片海"看起来还行"，但数字在说另一件事。'},
+    {t:'第二节 · 王老板的礼盒', s:'化工厂的王老板第三次登门："手续我都备好了，就差您一个章。"'},
+    {t:'第三节 · 涨落之间', s:'潮水照常涨落，可滩涂上的螃蟹洞，比上个月少了。'},
+    {t:'第四节 · 报表与海风', s:'办公室里是漂亮的报表，窗外是说不清颜色的海水。你决定今天去海边走走。'},
+    {t:'第五节 · 渔火', s:'夜里，远处的渔火明明灭灭。陈伯的船，已经很久没出海了。'},
+    {t:'第六节 · 十字路口', s:'所有线索都指向一个选择：要眼前的发展，还是要长远的林子。'},
+    {t:'第七节 · 深水区', s:'改革的深水区，连浪都比别处大。'},
+    {t:'第八节 · 答案在海里', s:'考核要到了。老站长日志的最后一页写着：答案不在报表里，在海里。'},
+  ],
+  3:[
+    {t:'第一节 · 云系成形', s:'气象雷达上，"海燕"的外围云系已经成形，像一只缓缓睁开的眼睛。'},
+    {t:'第二节 · 破损的铠甲', s:'周博士踩着泥滩看完林子，摇头："这身铠甲有裂缝了，经不起重锤。"'},
+    {t:'第三节 · 抢修季节', s:'台风季前的每一天都很宝贵。补漏，还是发展？你只能选一件先做。'},
+    {t:'第四节 · 风前的宁静', s:'海面平得像镜子。老渔民都知道，这样的平静最靠不住。'},
+    {t:'第五节 · 半岛消息', s:'收音机里，台风路径一次次修正，每一次都比上一次更靠近这里。'},
+    {t:'第六节 · 与时间赛跑', s:'你把所有能调的人手都排了班。能抢回一棵是一棵。'},
+    {t:'第七节 · 潮位新高', s:'天文大潮撞上风暴潮，潮位标尺的红线被顶到了历史新高。'},
+    {t:'第八节 · 守与撤', s:'有人劝你："实在不行就放弃低潮区那几棵。"你还没回答。'},
+    {t:'第九节 · 黎明前的风', s:'风声整夜没停。天亮时，你冲向了海边。'},
+    {t:'第十节 · 风暴之后', s:'风暴过境。太阳照在湿漉漉的林子上——它还在不在，取决于你之前做的每一个决定。'},
+  ],
+  4:[
+    {t:'第一节 · 三面的烟囱', s:'晨雾里能数出七根烟囱。你把湾区地图钉在墙上，红笔圈住了每一根。'},
+    {t:'第二节 · 割开的潮沟', s:'退潮后，虾塘围堰的影子横在滩涂上，像一道道没拆完的伤疤。'},
+    {t:'第三节 · 蛛网管线', s:'巡护员小林带来了管线分布草图——偷排口，可能有三个以上。'},
+    {t:'第四节 · 无声的沉降', s:'底泥采样结果出来了。有些伤害，肉眼看不见，却在一天天沉积。'},
+    {t:'第五节 · 蟹洞的计数', s:'周博士蹲在滩涂上数蟹洞："数量是十年前的三成。数字不会撒谎。"'},
+    {t:'第六节 · 谈判桌', s:'湾区治理联席会开到深夜。桌上摆着两个方案，和一叠互相推诿的公函。'},
+    {t:'第七节 · 转机的裂缝', s:'转机总是从裂缝里漏进来的——督察组的名单上，出现了这个湾区。'},
+    {t:'第八节 · 退潮见滩', s:'围堰拆了第一段，潮水重新涌进来了。老陈伯站在滩涂上，久久没说话。'},
+    {t:'第九节 · 大修之年', s:'所有人都知道，这是湾区的"大修之年"。修的是塘，是管子，也是人心。'},
+    {t:'第十节 · 湾区的黄昏', s:'黄昏的湾区泛着金色。烟囱还在，但水，开始清了。'},
+    {t:'第十一节 · 长跑', s:'生态修复是场长跑，而你已经跑过了最难的一段。'},
+    {t:'第十二节 · 留下来的', s:'一年过去。能留下的，才是真正改变过的。'},
+  ],
+  5:[
+    {t:'第一节 · 评估组要来了', s:'红头文件贴上了公告栏：国家级评估组，下周进驻。'},
+    {t:'第二节 · 两栏评估表', s:'评估表只有两栏：左边是生态，右边是民生。任何一栏空着都不行。'},
+    {t:'第三节 · 绿色的账本', s:'镇上的账本第一次出现了"生态"这个科目。有人好奇，有人撇嘴。'},
+    {t:'第四节 · 碳汇的传说', s:'省城来的专家提到"蓝碳交易"——原来站着不动的红树，也能挣GDP。'},
+    {t:'第五节 · 白鹭归来', s:'清晨，观鸟志愿者在群里发了一张照片：白鹭，成群的白鹭。'},
+    {t:'第六节 · 镜头下的林子', s:'纪录片摄制组架起了摇臂。镜头里，每一棵红树都是主角。'},
+    {t:'第七节 · 最后的钉子户', s:'还剩最后一口违规虾塘没谈妥。塘主蹲在塘边，抽了半包烟。'},
+    {t:'第八节 · 联审之夜', s:'联审会的灯亮到凌晨。你在两栏评估表之间，写下了最后一段陈述。'},
+    {t:'第九节 · 摘牌前夜', s:'有人想赶在评估前"突击"报喜。你把材料锁进柜子：是真的，才是好的。'},
+    {t:'第十节 · 等风来', s:'评估组的车已在路上。你最后望了一眼那片绿——它现在，是最好的自己。'},
+    {t:'第十一节 · 答卷之外', s:'无论结果如何，这片林子记得这十二天里的每一个决定。'},
+    {t:'第十二节 · 毕业答卷', s:'评估结束。老站长的日志翻到了新的一页，这一次，执笔的人是你。'},
+  ],
+};
+function roundStory(lvId, round){
+  const beats = ROUNDS_STORY[lvId] || ROUNDS_STORY[1];
+  return beats[Math.min(round, beats.length)-1] ||
+    {t:'第 '+round+' 节 · 潮起潮落', s:'潮水照常涨落，故事还在继续。'};
+}
+function getUnlocked(){
+  let v=parseInt(localStorage.getItem(K('unlocked'))||'1',10);
+  if(isGuest()) v=Math.min(v,2);        // 访客最多解锁第 2 关
+  return v;
+}
+function getStars(lv){ return parseInt(localStorage.getItem(K('stars_'+lv))||'0',10); }
+function saveStars(lv, stars){ if(stars>getStars(lv)) localStorage.setItem(K('stars_'+lv), String(stars)); }
+
+/* ================= 金币 / 商店 / 皮肤 ================= */
+function getCoins(){ return parseInt(localStorage.getItem(K('coins'))||'0',10); }
+function addCoins(n){ localStorage.setItem(K('coins'), String(getCoins()+n)); }
+function getInv(k){ return parseInt(localStorage.getItem(K('inv_'+k))||'0',10); }
+function addInv(k,n){ localStorage.setItem(K('inv_'+k), String(getInv(k)+n)); }
+function saveAch(){ try{ localStorage.setItem(K('ach'), JSON.stringify([...S.achievements])); }catch(e){} }
+const DEFAULT_PAGE_BG='radial-gradient(1100px 480px at 88% -6%, rgba(255,213,140,.42), transparent 62%),radial-gradient(900px 520px at -8% 28%, rgba(126,222,196,.30), transparent 60%),radial-gradient(860px 620px at 52% 112%, rgba(142,204,242,.34), transparent 65%),linear-gradient(180deg,#e6f4fb 0%,#eefaf3 52%,#e0f3ec 100%)';
+const SKINS={
+ default:{name:'🌊 经典海湾', cost:0,     sky:['#bfe7f7','#e8f6ec'], sea:[88,193,232],  sun:'#ffe28a', sunY:52, dusk:['#f7c985','#fbe7c2'], sunDusk:'#ffc46b', fx:null,      fxName:'晴空与飞鸟', page:null},
+ dusk:   {name:'🌅 黄昏金滩', cost:300,   sky:['#ffd9a0','#ffefdf'], sea:[143,180,208], sun:'#ff9d5c', sunY:72, dusk:['#ffbe78','#ffdcb2'], sunDusk:'#ff8a3c', fx:'spark',    fxName:'✨ 漫天金色光斑', page:'radial-gradient(1100px 480px at 88% -6%, rgba(255,178,100,.5), transparent 62%),radial-gradient(900px 520px at -8% 28%, rgba(255,205,150,.35), transparent 60%),linear-gradient(180deg,#fdf0dd 0%,#fbe7cd 55%,#f6dcc0 100%)'},
+ forest: {name:'🌲 翡翠雨林', cost:350,   sky:['#cfe9d8','#f0f9ea'], sea:[64,180,120],  sun:'#f2ffb8', sunY:50, dusk:['#a8d9a0','#d4ecc2'], sunDusk:'#7ec97e', fx:'leaf',     fxName:'🍃 密林落叶 + 萤火', page:'radial-gradient(1100px 480px at 88% -6%, rgba(210,245,170,.45), transparent 62%),radial-gradient(900px 520px at -8% 28%, rgba(120,210,150,.32), transparent 60%),linear-gradient(180deg,#eaf6e8 0%,#e2f2de 52%,#d8ecd4 100%)'},
+ candy:  {name:'🍬 糖果甜梦', cost:450,   sky:['#fde3f3','#efeafd'], sea:[235,170,225], sun:'#ffb5d6', sunY:54, dusk:['#f7c2e0','#e8d4fa'], sunDusk:'#ff9ecb', fx:'hearts',   fxName:'🩷 爱心泡泡雨', page:'radial-gradient(1100px 480px at 88% -6%, rgba(255,170,215,.42), transparent 62%),radial-gradient(900px 520px at -8% 28%, rgba(185,195,255,.34), transparent 60%),linear-gradient(180deg,#fdeaf5 0%,#f6ecfb 52%,#efe7fa 100%)'},
+ sakura: {name:'🌸 樱花粉湾', cost:500,   sky:['#ffe3ee','#fff2f7'], sea:[240,167,195], sun:'#ffd166', sunY:52, dusk:['#ffc8a0','#ffe0c8'], sunDusk:'#ffb066', fx:'petal',    fxName:'🌸 樱花花瓣飘落', page:'radial-gradient(1100px 480px at 88% -6%, rgba(255,195,220,.45), transparent 62%),radial-gradient(900px 520px at -8% 28%, rgba(255,225,238,.4), transparent 60%),linear-gradient(180deg,#fdeef5 0%,#fae9f0 52%,#f5e4ec 100%)'},
+ coral:  {name:'🪸 珊瑚暖湾', cost:600,   sky:['#ffe0d0','#fff4ea'], sea:[255,150,120], sun:'#ffb08a', sunY:60, dusk:['#ffb99a','#ffdcc4'], sunDusk:'#ff9466', fx:'bubble',   fxName:'🫧 海底气泡上升', page:'radial-gradient(1100px 480px at 88% -6%, rgba(255,160,125,.42), transparent 62%),radial-gradient(900px 520px at -8% 28%, rgba(255,210,180,.36), transparent 60%),linear-gradient(180deg,#fdeee8 0%,#fae6dc 52%,#f5ddd0 100%)'},
+ ice:    {name:'❄️ 冰雪王国', cost:650,   sky:['#d8ecfa','#f4fbff'], sea:[170,220,240], sun:'#dff0ff', sunY:46, dusk:['#c4ddf2','#e6f2fb'], sunDusk:'#b9d9f5', fx:'snow',     fxName:'❄️ 漫天飘雪', page:'radial-gradient(1100px 480px at 88% -6%, rgba(185,225,255,.5), transparent 62%),radial-gradient(900px 520px at -8% 28%, rgba(210,240,255,.4), transparent 60%),linear-gradient(180deg,#eef7fd 0%,#e6f2fa 52%,#dcEDf7 100%)'},
+ mono:   {name:'🖋️ 水墨画卷', cost:700,   sky:['#e8e9ea','#f6f6f4'], sea:[150,160,168], sun:'#d9dadb', sunY:50, dusk:['#cfd2d2','#e9e9e6'], sunDusk:'#b8bcbe', fx:'ink',      fxName:'🖋️ 水墨晕染', page:'radial-gradient(1100px 480px at 88% -6%, rgba(190,195,200,.4), transparent 62%),radial-gradient(900px 520px at -8% 28%, rgba(170,178,185,.25), transparent 60%),linear-gradient(180deg,#f0f1f2 0%,#eaeced 52%,#e3e6e7 100%)'},
+ night:  {name:'🌌 极夜荧光', cost:800,   sky:['#16233f','#2c4a72'], sea:[63,174,159],  sun:'#c9f7ff', sunY:46, dusk:['#243a60','#41628e'], sunDusk:'#c9f7ff', fx:'firefly',  fxName:'🪲 萤火虫飞舞', page:'radial-gradient(1100px 480px at 88% -6%, rgba(150,220,235,.28), transparent 62%),radial-gradient(900px 520px at -8% 28%, rgba(110,160,220,.22), transparent 60%),linear-gradient(180deg,#e4ecf6 0%,#dbe6f3 52%,#d2e0ef 100%)'},
+ aurora: {name:'🌠 极光之夜', cost:900,   sky:['#122b3d','#1d4a55'], sea:[50,190,175],  sun:'#bfffe9', sunY:44, dusk:['#1a3d4d','#2f5f68'], sunDusk:'#8fffe0', fx:'aurora',   fxName:'🌠 极光飘带 + 星河', page:'radial-gradient(1100px 480px at 88% -6%, rgba(90,240,195,.3), transparent 62%),radial-gradient(900px 520px at -8% 28%, rgba(150,120,255,.22), transparent 60%),linear-gradient(180deg,#e3f4f2 0%,#dceef0 52%,#d4e8ec 100%)', svgFx:'aurora'},
+ cyber:  {name:'🌆 赛博海湾', cost:1200,  sky:['#241b45','#3a2a6e'], sea:[40,160,190],  sun:'#54f0d8', sunY:48, dusk:['#2f2458','#45347c'], sunDusk:'#54f0d8', fx:'cyber',    fxName:'💾 霓虹数据雨', page:'radial-gradient(1100px 480px at 88% -6%, rgba(150,120,255,.3), transparent 62%),radial-gradient(900px 520px at -8% 28%, rgba(80,235,205,.22), transparent 60%),linear-gradient(180deg,#ece4fa 0%,#e5e7f9 52%,#dfeaf6 100%)', svgFx:'neon'},
+ gold:   {name:'✨ 鎏金海岸', cost:1500,  sky:['#ffe9b0','#fff8e2'], sea:[120,190,190], sun:'#ffd257', sunY:56, dusk:['#ffd98a','#fff0c0'], sunDusk:'#ffbe3d', fx:'gold',     fxName:'🏆 鎏金碎钻光雨', page:'radial-gradient(1100px 480px at 88% -6%, rgba(255,208,105,.5), transparent 62%),radial-gradient(900px 520px at -8% 28%, rgba(255,230,160,.4), transparent 60%),linear-gradient(180deg,#fdf3dc 0%,#f9ebcb 52%,#f4e2ba 100%)', svgFx:'stars'},
+};
+let SKIN = SKINS[localStorage.getItem(K('skin'))] || SKINS.default;
+function applySkin(){
+  /* 页面背景随皮肤换色调 */
+  document.body.style.background = SKIN.page || DEFAULT_PAGE_BG;
+  $('skyA').setAttribute('stop-color', SKIN.sky[0]);
+  $('skyB').setAttribute('stop-color', SKIN.sky[1]);
+  $('sunC').setAttribute('fill', SKIN.sun);
+  $('sunC').setAttribute('cy', SKIN.sunY);
+  buildSkinFx();
+  buildSkyFx();
+  render();
+}
+/* ===== 皮肤专属特效粒子（切换皮肤时重建） ===== */
+function buildSkinFx(){
+  document.querySelectorAll('#bgDeco .skfx').forEach(e=>e.remove());
+  const deco=$('bgDeco'); if(!SKIN.fx || !deco) return;
+  const rnd=(a,b)=>a+Math.random()*(b-a);
+  const add=(cls,css,txt)=>{const e=document.createElement('i');e.className='skfx '+cls;e.style.cssText=css;if(txt)e.textContent=txt;deco.appendChild(e);};
+  switch(SKIN.fx){
+    case 'spark':
+      for(let i=0;i<18;i++){const s=rnd(5,12);add('sparkp','top:'+rnd(3,92)+'%;left:'+rnd(2,96)+'%;width:'+s.toFixed(0)+'px;height:'+s.toFixed(0)+'px;animation-delay:-'+rnd(0,2).toFixed(1)+'s;');}
+      break;
+    case 'leaf':
+      for(let i=0;i<9;i++) add('leaf','left:'+rnd(3,95)+'%;font-size:'+rnd(13,20)+'px;animation-duration:'+rnd(13,24)+'s;animation-delay:-'+rnd(0,20).toFixed(1)+'s;',['🍃','🌿','🍃'][i%3]);
+      for(let i=0;i<6;i++){const s=rnd(5,9);add('firefly','top:'+rnd(15,80)+'%;left:'+rnd(2,95)+'%;width:'+s.toFixed(0)+'px;height:'+s.toFixed(0)+'px;animation-duration:'+rnd(5,10).toFixed(1)+'s;animation-delay:-'+rnd(0,8).toFixed(1)+'s;');}
+      break;
+    case 'hearts':
+      for(let i=0;i<12;i++) add('petalp','left:'+rnd(2,96)+'%;font-size:'+rnd(13,21)+'px;animation-duration:'+rnd(11,22).toFixed(1)+'s;animation-delay:-'+rnd(0,20).toFixed(1)+'s;',['🩷','🫧','🍬','💗'][i%4]);
+      break;
+    case 'petal':
+      for(let i=0;i<13;i++) add('petalp','left:'+rnd(2,96)+'%;font-size:'+rnd(12,20)+'px;animation-duration:'+rnd(12,24).toFixed(1)+'s;animation-delay:-'+rnd(0,20).toFixed(1)+'s;',['🌸','🌸','🌺'][i%3]);
+      break;
+    case 'bubble':
+      for(let i=0;i<13;i++){const s=rnd(8,26);add('bubblep','left:'+rnd(2,96)+'%;width:'+s.toFixed(0)+'px;height:'+s.toFixed(0)+'px;animation-duration:'+rnd(10,22).toFixed(1)+'s;animation-delay:-'+rnd(0,20).toFixed(1)+'s;');}
+      break;
+    case 'snow':
+      for(let i=0;i<18;i++) add('snowp','left:'+rnd(2,97)+'%;font-size:'+rnd(10,20).toFixed(0)+'px;animation-duration:'+rnd(9,20).toFixed(1)+'s;animation-delay:-'+rnd(0,18).toFixed(1)+'s;','❄');
+      break;
+    case 'ink':
+      for(let i=0;i<9;i++){const s=rnd(30,90);add('inkp','top:'+rnd(5,85)+'%;left:'+rnd(3,90)+'%;width:'+s.toFixed(0)+'px;height:'+s.toFixed(0)+'px;animation-duration:'+rnd(8,16).toFixed(1)+'s;animation-delay:-'+rnd(0,10).toFixed(1)+'s;');}
+      break;
+    case 'firefly':
+      for(let i=0;i<14;i++){const s=rnd(6,14);add('firefly','top:'+rnd(10,85)+'%;left:'+rnd(2,95)+'%;width:'+s.toFixed(0)+'px;height:'+s.toFixed(0)+'px;animation-duration:'+rnd(5,11).toFixed(1)+'s;animation-delay:-'+rnd(0,8).toFixed(1)+'s;');}
+      for(let i=0;i<10;i++){const s=rnd(2,4);add('starp','top:'+rnd(2,30)+'%;left:'+rnd(2,96)+'%;width:'+s.toFixed(0)+'px;height:'+s.toFixed(0)+'px;animation-delay:-'+rnd(0,3).toFixed(1)+'s;');}
+      break;
+    case 'aurora':
+      add('aurora-band','top:-3vh;height:24vh;background:linear-gradient(90deg,rgba(64,255,180,0),rgba(64,255,180,.5),rgba(120,160,255,.35),rgba(64,255,180,0));animation-duration:11s;');
+      add('aurora-band','top:7vh;height:17vh;background:linear-gradient(90deg,rgba(185,120,255,0),rgba(185,120,255,.42),rgba(90,255,220,.4),rgba(185,120,255,0));animation-duration:15s;animation-delay:-5s;');
+      for(let i=0;i<20;i++){const s=rnd(2,4.5);add('starp','top:'+rnd(2,40)+'%;left:'+rnd(2,96)+'%;width:'+s.toFixed(0)+'px;height:'+s.toFixed(0)+'px;animation-delay:-'+rnd(0,3).toFixed(1)+'s;');}
+      break;
+    case 'cyber':
+      for(let i=0;i<15;i++) add('digitalp','left:'+rnd(2,97)+'%;height:'+rnd(40,110).toFixed(0)+'px;animation-duration:'+rnd(3,8).toFixed(1)+'s;animation-delay:-'+rnd(0,6).toFixed(1)+'s;opacity:'+rnd(.3,.7).toFixed(2));
+      for(let i=0;i<10;i++){const s=rnd(2,4);add('starp','top:'+rnd(2,32)+'%;left:'+rnd(2,96)+'%;width:'+s.toFixed(0)+'px;height:'+s.toFixed(0)+'px;animation-delay:-'+rnd(0,3).toFixed(1)+'s;');}
+      break;
+    case 'gold':
+      for(let i=0;i<22;i++){const s=rnd(4,11);add('sparkp','top:'+rnd(2,94)+'%;left:'+rnd(2,96)+'%;width:'+s.toFixed(0)+'px;height:'+s.toFixed(0)+'px;animation-delay:-'+rnd(0,2).toFixed(1)+'s;');}
+      for(let i=0;i<8;i++) add('petalp','left:'+rnd(2,96)+'%;font-size:'+rnd(10,16)+'px;animation-duration:'+rnd(14,26).toFixed(1)+'s;animation-delay:-'+rnd(0,20).toFixed(1)+'s;',['✨','⭐','💫'][i%3]);
+      break;
+  }
+}
+/* ===== 场景 SVG 天空特效（星星 / 极光带 / 霓虹线） ===== */
+function buildSkyFx(){
+  const g=$('skyFxG'); if(!g) return;
+  const rnd=(a,b)=>a+Math.random()*(b-a);
+  let html='';
+  if(SKIN.svgFx==='stars' || SKIN.svgFx==='aurora'){
+    for(let i=0;i<16;i++){
+      html+='<circle cx="'+rnd(10,980).toFixed(0)+'" cy="'+rnd(8,118).toFixed(0)+'" r="'+rnd(.8,2).toFixed(1)+'" fill="#fff" opacity=".8">'+
+        '<animate attributeName="opacity" values="0.15;0.95;0.15" dur="'+rnd(2,5).toFixed(1)+'s" repeatCount="indefinite"/></circle>';
+    }
+  }
+  if(SKIN.svgFx==='aurora'){
+    html+='<g filter="url(#softBlur)">'+
+      '<path d="M0 50 Q 250 15 500 45 T 1000 35 L 1000 95 Q 750 65 500 95 T 0 110 Z" fill="url(#auroraG1)" opacity=".42">'+
+      '<animateTransform attributeName="transform" type="translate" values="0,0;18,7;0,0" dur="9s" repeatCount="indefinite"/></path>'+
+      '<path d="M0 82 Q 300 50 600 80 T 1000 66 L 1000 112 Q 700 90 400 114 T 0 124 Z" fill="url(#auroraG2)" opacity=".32">'+
+      '<animateTransform attributeName="transform" type="translate" values="0,0;-16,-6;0,0" dur="12s" repeatCount="indefinite"/></path></g>';
+  }
+  if(SKIN.svgFx==='neon'){
+    html+='<line x1="0" y1="149" x2="1000" y2="149" stroke="#27f5d8" stroke-width="1.4" opacity=".6"/>'+
+      '<line x1="0" y1="155" x2="1000" y2="155" stroke="#b46bff" stroke-width="1" opacity=".45"/>'+
+      '<line x1="0" y1="160" x2="1000" y2="160" stroke="#27f5d8" stroke-width=".7" opacity=".3"/>';
+  }
+  g.innerHTML=html;
+}
+
+/* ================= 场景构建 ================= */
+function mk(tag, attrs, parent){
+  const e = document.createElementNS(svgNS, tag);
+  for(const k in attrs) e.setAttribute(k, attrs[k]);
+  if(parent) parent.appendChild(e);
+  return e;
+}
+function buildScene(){
+  TREES.forEach((t,i)=>{
+    const g = mk('g',{class:'clickable treeSway', 'data-k':(t.zone==='高潮区'?'tree_high':'tree_low')}, $('treeLayer'));
+    g.style.animationDelay = (i*0.7)+'s';
+    g.style.transformOrigin = t.x+'px 400px';
+    const droop = t.zone!=='高潮区' ? 4 : 0;
+    mk('path',{d:'M'+(t.x-26)+' 400 Q '+(t.x-10)+' 386 '+(t.x-2)+' 362', stroke:'#6d4d30','stroke-width':4,fill:'none','stroke-linecap':'round'},g);
+    mk('path',{d:'M'+(t.x+26)+' 400 Q '+(t.x+10)+' 386 '+(t.x+2)+' 362', stroke:'#6d4d30','stroke-width':4,fill:'none','stroke-linecap':'round'},g);
+    mk('path',{d:'M'+t.x+' 400 L '+t.x+' 356', stroke:'#7d5a3a','stroke-width':7,fill:'none','stroke-linecap':'round'},g);
+    mk('path',{d:'M'+(t.x-14)+' 400 Q '+(t.x-6)+' 392 '+(t.x-2)+' 372', stroke:'#8a6644','stroke-width':3,fill:'none'},g);
+    mk('path',{d:'M'+(t.x+14)+' 400 Q '+(t.x+6)+' 392 '+(t.x+2)+' 372', stroke:'#8a6644','stroke-width':3,fill:'none'},g);
+    mk('circle',{cx:t.x-20, cy:330-droop, r:22, class:'canopy'},g);
+    mk('circle',{cx:t.x+20, cy:330-droop, r:22, class:'canopy'},g);
+    mk('circle',{cx:t.x, cy:308-droop, r:26, class:'canopy'},g);
+    mk('circle',{cx:t.x-6, cy:386, r:2.4, fill:'#3d2a18', class:'borer hidden'},g);
+    mk('circle',{cx:t.x+5, cy:392, r:2, fill:'#3d2a18', class:'borer hidden'},g);
+    mk('circle',{cx:t.x+1, cy:378, r:1.8, fill:'#3d2a18', class:'borer hidden'},g);
+    const hearts = mk('text',{x:t.x, y:270, 'font-size':15, 'text-anchor':'middle', class:'hearts'},g);
+    hearts.textContent = '💚💚💚💚💚';
+    mk('text',{x:t.x, y:256, 'font-size':10, 'text-anchor':'middle', fill:'#5a6b7d'},g).textContent = t.zone+'红树';
+  });
+  const CRAB_POS = [[140,398],[470,416],[640,406]];
+  CRAB_POS.forEach((p,i)=>{
+    const g = mk('g',{class:'clickable crabwalk','data-k':'crab'},$('crabLayer'));
+    g.style.animationDelay = (i*1.3)+'s';
+    mk('text',{x:p[0],y:p[1],'font-size':19,class:'crab'},g).textContent='🦀';
+  });
+  const FISH_POS = [[0,190],[0,230],[0,155],[0,265],[0,205]];
+  FISH_POS.forEach((p,i)=>{
+    const g = mk('g',{class:'fish f'+((i%3)+1)},$('fishLayer'));
+    const inner = mk('g',{class:'fishbody clickable','data-k':'fish'},g);
+    mk('text',{x:p[0]+200,y:p[1],'font-size':18},inner).textContent='🐟';
+  });
+  for(let i=0;i<44;i++){
+    mk('circle',{cx:20+Math.random()*960, cy:130+Math.random()*160, r:2+Math.random()*1.8,
+      fill:'#d9e86b', class:'plankton pk'},$('planktonLayer'));
+  }
+  const ISO_SPOTS = [[596,376],[618,374],[640,376],[600,384],[630,382],[214,394],[222,396],[368,398],[380,400],[524,398],[700,384],[856,382],[864,384],[724,384],[946,382],[690,404],[880,400],[360,408],[530,406],[660,410]];
+  ISO_SPOTS.forEach((p,i)=>{
+    const g = mk('g',{class:'clickable','data-k':'isopod'},$('isoLayer'));
+    mk('ellipse',{cx:p[0],cy:p[1],rx:4.6,ry:2.4,fill:'#6b5a3e',class:'iso'},g);
+    mk('line',{x1:p[0]-4,y1:p[1]-1,x2:p[0]+4,y2:p[1]-1,stroke:'#8f7c58','stroke-width':.8},g);
+  });
+}
+buildScene();
+
+/* ================= 知识彩蛋 ================= */
+const KNOWLEDGE = {
+  tree_high:{icon:'🌳', title:'高潮区红树',
+    text:'我在高潮区，只有大潮时才被淹，团水虱较少光顾我。我的气生根帮助我在潮间带呼吸 —— 只要水质好、环境健康，我能抵御少量蛀孔，甚至长出新的侧根修复伤口！'},
+  tree_low:{icon:'🌳', title:'中低潮区红树',
+    text:'我在中低潮区，经常被潮水淹没。如果水质好，我能适应；但如果水质差又长期淹水，我就很难受了……虚弱的我没力气修复蛀孔的伤口，团水虱就会趁机攻破我。'},
+  isopod:[
+    {icon:'🦐', title:'有孔团水虱 Sphaeroma terebrans',
+     text:'我是团水虱家族的一员！我们是海洋等足类，像"海洋白蚁"，会蛀红树的气生根。其实我们有好几种哦 —— 再点点我，看看其他兄弟姐妹……'},
+    {icon:'🦐', title:'光背团水虱 Sphaeroma walkeri',
+     text:'我主要吃浮游生物，不是木头！当水体富营养化，我的食物就特别多，繁殖也更快……这就是为什么排污会让我们的家族壮大。'},
+    {icon:'🦐', title:'福建团水虱 Sphaeroma fukienense',
+     text:'我们三兄弟常常一起出现，但各有特点，科学家要仔细观察才能分辨我们！'}
+  ],
+  crab:{icon:'🦀', title:'螃蟹：团水虱的天敌',
+    text:'我是团水虱的天敌！我每天在滩涂巡逻，控制它们的数量。但如果人类过度捕捞我，或者养鸭踩坏我的家，我就没法帮忙了……'},
+  fish:{icon:'🐟', title:'小鱼：也是天敌',
+    text:'我也吃团水虱！但过度捕捞和水质恶化让我的族群越来越少……当天敌消失，团水虱就没有了刹车。'},
+  wood:{icon:'🪵', title:'枯木与木桩',
+    text:'团水虱也会蛀我们！它不是只攻击红树 —— 枯木、木桩、软质沉积岩、甚至泡沫浮子都可能被蛀。所以发现团水虱，不等于一定有灾害哦！'},
+  creek:{icon:'〰️', title:'潮沟与林缘',
+    text:'这里是团水虱最喜欢的地方！潮沟边、林缘、排污口附近，水流带来丰富的食物，往往是暴发的重灾区。'},
+  plankton:{icon:'🦠', title:'浮游生物',
+    text:'别小看我们！团水虱主要靠滤食我们为生。水越"肥"（富营养化），我们越多，团水虱就越容易繁殖！'},
+  hole:{icon:'🕳️', title:'蛀孔',
+    text:'少量蛀孔是正常的！健康的红树可以修复这些伤口。但如果它已经因污染变弱，就没力气修复了 —— 蛀孔会越来越多，气生根会被蛀断……'},
+};
+function showKnowledge(key){
+  const k = KNOWLEDGE[key]; if(!k) return;
+  let body;
+  if(key==='isopod'){
+    body = KNOWLEDGE.isopod[S.isoClicks % 3];
+    S.isoClicks++;
+    if(S.isoClicks===3) unlock('团水虱观察家');
+  } else body = k;
+  // 彩蛋探索奖金：每个元素每局首次点击 +3🪙（新的一局可再赚）
+  const firstTime = !S.explored.has(key);
+  S.explored.add(key);
+  if(firstTime){ addCoins(3); }
+  if(S.explored.size>=6) unlock('红树林探索家');
+  showModal('💬 '+body.icon+' '+body.title,
+    '<div class="m-body">'+body.text+
+    (firstTime?'<div style="margin-top:10px;font-weight:700;color:#e0a52e;">🪙 探索奖励 +3（新的一局可再赚）</div>':'')+
+    '</div>',
+    [{label:'我知道了', cls:'ghost', fn:closeModal}]);
+}
+
+/* ================= 成就 / toast ================= */
+function toast(msg){
+  const t=$('toast'); t.textContent=msg; t.classList.add('show');
+  clearTimeout(t._tm); t._tm=setTimeout(()=>t.classList.remove('show'),2600);
+}
+/* 章节过场卡：淡入淡出的故事运镜（不阻挡点击） */
+function showChapter(day, beat){
+  $('cvDay').textContent=day;
+  $('cvBeat').textContent='「 '+beat+' 」';
+  const v=$('chapterVeil');
+  v.classList.add('show');
+  clearTimeout(v._tm);
+  v._tm=setTimeout(()=>v.classList.remove('show'), 1700);
+}
+
+/* ===== 全屏故事页引擎：序章 / 卷末尾声 ===== */
+function showStory(kicker, title, paras, footHtml, btnLabel, then){
+  $('stKicker').textContent=kicker;
+  $('stTitle').textContent=title;
+  $('stParas').innerHTML=paras.map((p,i)=>
+    '<p style="animation-delay:'+(0.15+i*0.45)+'s;">'+p+'</p>').join('');
+  const foot=$('stFoot');
+  if(footHtml){ foot.style.display=''; foot.innerHTML=footHtml; }
+  else foot.style.display='none';
+  $('stBtn').textContent=btnLabel;
+  const v=$('storyVeil');
+  v.classList.add('show');
+  $('stBtn').onclick=()=>{ v.classList.remove('show'); if(then) setTimeout(then,350); };
+}
+
+/* 卷末尾声：每关通关后的一段故事收束（像翻到一卷的最后一页） */
+const EPILOGUES = {
+  1:{k:'第一卷 · 尾声', t:'平静的海面回来了',
+     paras:[
+       '一个月后，海水重新变清了。螃蟹在滩涂上巡逻，小鱼回到根网间产卵，团水虱退回了枯木上，安分地做着"背景成员"。',
+       '老站长回来验收，在日志上写下一行字：<b>"试用期，通过。"</b>',
+       '可你注意到，日志的下一页画着一个小镇的方向——那里，有几根烟囱正在升起。']},
+  2:{k:'第二卷 · 尾声', t:'烟囱与树影之间',
+     paras:[
+       '处理厂的机器日夜运转，小镇的水一天天变清。王老板的化工厂装上了处理线——他嘴上抱怨成本，烟囱里的颜色却老实了很多。',
+       '陈伯拎着两条鱼来管理站串门：<b>"后生，这鱼，多少年没见过这么肥的了。"</b>',
+       '周博士看着监测数据点了点头，然后指了指气象图上的一团云：<b>"别高兴太早，台风季要来了。"</b>']},
+  3:{k:'第三卷 · 尾声', t:'风暴过境之后',
+     paras:[
+       '"海燕"过境那晚，风声像整片海在怒吼。第二天清晨，你踩着泥滩走进林子——气生根抓得紧紧的，一棵都没有倒。',
+       '镇上的人说，是这片红树林挡住了风暴潮，保住了后面的鱼塘和房子。原来<b>守护森林，就是守护自己。</b>',
+       '上级的电话打了进来：湾区那边，有一块最难啃的骨头，点名要你去。']},
+  4:{k:'第四卷 · 尾声', t:'湾水澄清的日子',
+     paras:[
+       '重化湾区的治理像一场马拉松：一场一场的谈判，一根一根管道的封堵，一片一片补种的树苗。',
+       '王老板最后一次来管理站，把一份环保改造验收报告放在桌上：<b>"早知道绿了也能赚钱，我就不绕那些弯子了。"</b>',
+       '湾区的水鸟回来了，落在你五年前种下的第一棵树苗上——如今它已亭亭如盖。']},
+  5:{k:'第五卷 · 尾声', t:'国家公园授牌日',
+     paras:[
+       '评估组的印章落下的那一刻，管理站前挤满了人：陈伯穿着新褂子，周博士抱着水样箱，小林举着巡护记录本，连王老板都来了。',
+       '牌子上写着：<b>"红树林国家公园"</b>。你想起序章里那句老站长的话——红树林不怕风浪，怕的是人心变着花样折腾它。',
+       '如今，人心和森林，终于朝着一个方向。',
+       '<b>—— 全书完 ——</b><br><span style="font-size:12px;color:#8a7f5f;">感谢你守护这片海。真实的红树林，也需要每一个"你"。</span>']},
+};
+function unlock(name){
+  const firstEver = !S.achievements.has(name);
+  if(firstEver){ S.achievements.add(name); saveAch(); }   // 徽章永久保存
+  if(S.coinedAch.has(name)) return;                        // 同一局同一成就只发一次币
+  S.coinedAch.add(name);
+  const r=achReward(name);
+  addCoins(r);
+  toast((firstEver?'🏆 解锁成就：':'🪙 成就赏金：')+name+'！ +'+r+'🪙');
+}
+/* 成就图鉴（跨关累计的不入本局判定，仅展示） */
+const ACH_LIST=[
+ ['团水虱观察家','连续点击团水虱 3 次，认识三兄弟',15],
+ ['红树林探索家','探索 6 处场景彩蛋',15],
+ ['力挽狂澜','从濒危（红树<30）拉回 60 以上通关',30],
+ ['零污染通关','全程不碰高污染产业并通关',25],
+ ['财政盈余','通关时经济 ≥ 25',20],
+ ['生态满分','通关时红树 ≥90 且水质 ≥85',25],
+ ['风雨同舟','一关经历 4 次以上突发事件并通关',20],
+ ['绝地救援','使用过「应急救援行动」并通关',20],
+ ['传奇管理员','通过第 5 关，达成"全书完"',50],
+ ['满星收藏家','累计星星 ≥ 16 颗',40],
+ ['两袖清风','面对富商的巨额"红包"，当场拒绝',20],
+ ['光速死亡','开局 2 轮之内就让森林崩溃……',10],
+ ['生态墓地','亲手把红树健康度打到 0',10],
+ ['黯然离场','经济崩盘，被一纸调令撤职',10],
+ ['团水虱王国','把团水虱密度养到 95 以上 —— 你是它们的恩人',10],
+ ['污染全家桶','鸭场、虾塘、化工厂、污水直排，一个不落全建了',10],
+ ['发现管理员系统','输入了正确的管理员代号，发现了隐藏后门',20],
+];
+function achReward(name){ const a=ACH_LIST.find(x=>x[0]===name); return a ? a[2] : 15; }
+
+/* ================= 弹窗 ================= */
+function showModal(title, html, actions, icon){
+  const m=$('modal');
+  m.innerHTML = (icon?'<div class="ending-badge">'+icon+'</div>':'')+
+    '<h3>'+title+'</h3><div class="m-body">'+html+'</div>'+
+    '<div class="m-actions" id="modalActs"></div>';
+  const acts=$('modalActs');
+  (actions||[{label:'确定',cls:'',fn:closeModal}]).forEach(a=>{
+    const b=document.createElement('button');
+    b.className='btn'+(a.cls?' '+a.cls:''); b.textContent=a.label;
+    b.onclick=a.fn; acts.appendChild(b);
+  });
+  $('overlay').classList.remove('hidden');
+}
+function closeModal(){ $('overlay').classList.add('hidden'); }
+$('overlay').addEventListener('click', e=>{ if(e.target===$('overlay') && !S.busy) closeModal(); });
+
+/* ================= 渲染 ================= */
+function lerp(a,b,t){ return a+(b-a)*t; }
+function waterColor(w){
+  let c;
+  const B=SKIN.sea;   // 皮肤决定"干净态"的海色，污染后仍向浑浊色过渡
+  if(w>=60){ const t=(100-w)/40; c=[lerp(B[0],178,t),lerp(B[1],196,t),lerp(B[2],80,t)]; }
+  else { const t=Math.max(0,Math.min(1,(60-w)/40)); c=[lerp(178,125,t),lerp(196,105,t),lerp(80,65,t)]; }
+  return 'rgb('+c.map(v=>Math.round(v)).join(',')+')';
+}
+function barColor(kind, v){
+  if(kind==='iso') return v<35?'#3fae6a':(v<65?'#e0a52e':'#d8544a');
+  if(kind==='econ') return v>=0?'#3fae6a':(v>=-15?'#e0a52e':'#d8544a');
+  return v>=70?'#3fae6a':(v>=40?'#e0a52e':'#d8544a');
+}
+const NOTES = {
+  water: v=> v>=80?'清澈 ✅':(v>=60?'轻微富营养化':(v>=40?'富营养化 ⚠️':'严重污染 ☠️')),
+  tree:  v=> v>=80?'强壮 💚':(v>=60?'轻度受损':(v>=40?'虚弱 💛':(v>0?'濒危 ❤️':'死亡 ⚫'))),
+  iso:   v=> v<35?'正常（背景成员）':(v<65?'数量上升 ⚠️':'暴发 🔥'),
+  pred:  v=> v>=70?'充足':(v>=40?'减少 ⚠️':'稀少 ❗'),
+  econ:  v=> v>=10?'财政盈余':(v>=0?'收支平衡':(v>=-15?'赤字 ⚠️':'濒临破产 ❗')),
+};
+function render(){
+  // 天空随天数推进：皮肤底色→正午→皮肤黄昏色，太阳西移（配色跟随当前皮肤）
+  if($('skyA') && S.level){
+    const p=Math.max(0,Math.min(1,(S.round-1)/Math.max(1,S.level.rounds-1)));
+    const mix=(c1,c2,t)=>c1.map((v,i)=>Math.round(v+(c2[i]-v)*t));
+    const h2r=h=>{h=h.replace('#','');return [parseInt(h.slice(0,2),16),parseInt(h.slice(2,4),16),parseInt(h.slice(4,6),16)];};
+    const A=h2r(SKIN.sky[0]), B=h2r(SKIN.sky[1]);
+    const D1=h2r(SKIN.dusk[0]), D2=h2r(SKIN.dusk[1]);
+    const N1=mix(A,D1,.5), N2=mix(B,D2,.5);   // 正午 = 底色与黄昏的中间调
+    let t1,b1,t2,b2,tt;
+    if(p<0.5){ t1=A; t2=N1; b1=B; b2=N2; tt=p/0.5; }
+    else{ t1=N1; t2=D1; b1=N2; b2=D2; tt=(p-0.5)/0.5; }
+    $('skyA').setAttribute('stop-color','rgb('+mix(t1,t2,tt).join(',')+')');
+    $('skyB').setAttribute('stop-color','rgb('+mix(b1,b2,tt).join(',')+')');
+    const sun=$('sunC');
+    if(sun){
+      sun.setAttribute('cx', 900-640*p);
+      sun.setAttribute('cy', SKIN.sunY+34*p);
+      sun.setAttribute('fill', p>0.62?SKIN.sunDusk:SKIN.sun);
+    }
+  }
+  $('v-water').textContent=S.water; $('v-tree').textContent=S.tree;
+  $('v-iso').textContent=S.iso;     $('v-pred').textContent=S.pred;
+  $('v-econ').textContent=S.econ;
+  [['water',S.water],['tree',S.tree],['iso',S.iso],['pred',S.pred],['econ',Math.max(-40,S.econ)]].forEach(([k,v])=>{
+    const b=$('b-'+k); b.style.width=Math.abs(v)+'%';
+    if(k==='econ' && v<0) b.style.width=Math.min(40,Math.abs(v)*2)+'%';
+    b.style.background=barColor(k,v);
+    $('n-'+k).textContent=NOTES[k](S[k]!==undefined?S[k]:v);
+  });
+  /* 海水颜色渐变：水质变化不再跳变，而是慢慢过渡（变脏/变清都要花时间） */
+  const sea=$('seaRect');
+  sea.style.transition='fill 2.4s ease';
+  sea.style.fill=waterColor(S.water);
+  const eutro = 100-S.water;
+  const nPk = Math.max(3, Math.round(3 + eutro*0.42));
+  document.querySelectorAll('.pk').forEach((p,i)=> p.style.display = i<nPk ? '' : 'none');
+  const nIso = Math.max(2, Math.round(S.iso/7));
+  document.querySelectorAll('.iso').forEach((p,i)=> p.parentNode.style.display = i<nIso ? '' : 'none');
+  const nCrab = S.pred>=75?3:(S.pred>=45?2:(S.pred>=20?1:0));
+  document.querySelectorAll('#crabLayer > g').forEach((c,i)=> c.style.display = i<nCrab?'':'none');
+  const nFish = S.pred>=80?5:(S.pred>=60?4:(S.pred>=40?3:(S.pred>=20?2:1)));
+  document.querySelectorAll('#fishLayer > g').forEach((f,i)=> f.style.display = i<nFish?'':'none');
+  /* 树受损/死亡/复苏 的场景动画：树摇晃、倾垂、成片倒下、重新站起 */
+  if(S._lastTree===undefined) S._lastTree=S.tree;
+  const tgs=[...$('treeLayer').children];
+  tgs.forEach((g,i)=>{ g.style.transitionDelay=(i*0.1)+'s'; });   // 倒下/复苏时依次错开，像多米诺
+  if(S.tree < S._lastTree){
+    const n=Math.min(3, tgs.length);
+    for(let k=0;k<n;k++){
+      const g=tgs[Math.floor(Math.random()*tgs.length)];
+      g.classList.remove('shake'); void g.getBoundingClientRect(); g.classList.add('shake');
+      setTimeout(()=>g.classList.remove('shake'), 1900);
+    }
+    if(S.tree<=0 && S._lastTree>0) toast('🌳 红树成片倒下……森林崩溃了');
+  }else if(S.tree > S._lastTree){
+    if(S._lastTree<=0 && S.tree>0){
+      tgs.forEach((g,i)=> setTimeout(()=>{
+        g.classList.add('revive');
+        setTimeout(()=>g.classList.remove('revive'), 950);
+      }, i*140));
+      toast('🌱 倒下的红树，重新站了起来！');
+    }
+  }
+  S._lastTree=S.tree;
+  TREES.forEach((t,i)=>{
+    const g = $('treeLayer').children[i];
+    const canopy = S.tree<=0?'#7a6a52':(S.tree>=70?'#2e8b4a':(S.tree>=40?'#9aa63a':'#a1581f'));
+    g.querySelectorAll('.canopy').forEach(c=>c.setAttribute('fill',canopy));
+    const nHearts = Math.max(S.tree<=0?0:1, Math.round(S.tree/20));
+    let hearts=''; for(let j=0;j<5;j++) hearts += j<nHearts ? (S.tree<40?'❤️':'💚') : '⚪';
+    g.querySelector('.hearts').textContent = hearts;
+    g.querySelectorAll('.borer').forEach(b=> b.classList.toggle('hidden', S.tree>=60 || S.tree<=0));
+    g.classList.toggle('dead', S.tree<=0);            // 健康归零：倒下+褪色
+    g.classList.toggle('droop', S.tree<40 && S.tree>0); // 虚弱：微微倾垂
+  });
+  document.querySelectorAll('.borer').forEach(b=>{ b.setAttribute('data-k','hole'); });
+}
+
+/* ================= 决策卡片 ================= */
+const CARDS = [
+  {id:'duck', icon:'🦐', name:'批准建设养鸭场', type:'econ', minLevel:1,
+   desc:'带来经济收入，但鸭群排污风险高，还会踩坏滩涂上螃蟹的家。两种经营方式，后果大不相同。',
+   tags:[['经济 +10~22','econ'],['排污风险','risk']],
+   cond:()=>!S.duckFarm,
+   variants:[
+     {short:'集约化养鸭', label:'🏭 集约化养鸭（大规模）', econDelta:22,
+      desc:'赚钱最多。高密度养殖，粪便直排，鸭群踩踏滩涂。',
+      steps:[
+        {title:'📍 第1步：排污开始', fx:'pipe',
+         text:'大型养鸭场出现在红树林旁，管道开始向海里排放粪便和饲料残渣，水面渐渐浑浊……',
+         d:{water:-15}},
+        {title:'📍 第2步：富营养化', fx:'bloom',
+         text:'营养物质让浮游生物和藻类大量繁殖，海水变"肥"了，从蓝绿转向黄绿！',
+         d:{water:-18}},
+        {title:'📍 第3步：团水虱繁殖', fx:'iso',
+         text:'食物充足的团水虱开始大量繁殖，聚集在红树的气生根上……',
+         d:{iso:+35}},
+        {title:'📍 第4步：天敌减少 ⚠️', fx:'ducks',
+         text:'鸭群踩踏滩涂，螃蟹惊慌逃离；水质恶化让小鱼也越来越少……',
+         d:{pred:-40}},
+        {title:'📍 第5步：蛀孔加剧', fx:'borer',
+         text:'虚弱的红树无力修复伤口，团水虱的蛀孔越来越深，气生根开始被蛀断……',
+         d:{tree:-35}},
+      ]},
+     {short:'生态散养', label:'🌿 生态养鸭（小规模）', econDelta:10, flag:'duckEco',
+      desc:'收入少一半，但密度低、粪便收集还田，对滩涂干扰小得多。',
+      steps:[
+        {title:'📍 生态鸭场开张', fx:'pipe',
+         text:'小规模鸭场建在离林较远的坡地上，粪便统一收集做农家肥，只有少量冲洗水流入海……',
+         d:{water:-8, pred:-12, iso:+10}},
+      ]},
+   ]},
+  {id:'shrimp', icon:'🦐', name:'批准虾塘建设', type:'econ', minLevel:1,
+   desc:'方便养殖户，但传统虾塘排水改变水文，捕捞压力让天敌减少。',
+   tags:[['经济 +6~12','econ'],['水文改变','risk']],
+   cond:()=>!S.shrimp,
+   variants:[
+     {short:'传统虾塘', label:'🦐 传统土塘养殖', econDelta:12,
+      desc:'省事省成本，但养殖废水直排潮沟，还要捕野鱼做饲料。',
+      steps:[
+        {title:'📍 第1步：虾塘排水', fx:'pipe',
+         text:'虾塘的养殖废水排入潮沟，水色开始变化，水文节律被打乱……',
+         d:{water:-20}},
+        {title:'📍 第2步：过度捕捞', fx:'fewfish',
+         text:'为了喂养虾塘和加菜，人们大量捕捞野生的螃蟹和小鱼……',
+         d:{pred:-25}},
+        {title:'📍 第3步：团水虱抬头', fx:'iso',
+         text:'天敌变少、水体变肥，团水虱悄悄多了起来……',
+         d:{iso:+15}},
+      ]},
+     {short:'生态养殖池', label:'💧 循环水生态养殖池', econDelta:6,
+      desc:'成本高些，但养殖水循环使用、不外排，也不捕野鱼。',
+      steps:[
+        {title:'📍 生态养殖池建成', fx:null,
+         text:'循环水系统让养殖废水不再外排，饲料也改用人工配合料……',
+         d:{water:-8, pred:-8, iso:+6}},
+      ]},
+   ]},
+  {id:'direct', icon:'🏭', name:'处理生活污水', type:'econ', minLevel:1,
+   desc:'镇上的生活污水总得有个去处 —— 是图省钱直排，还是花小钱简易处理？',
+   tags:[['经济 +4~10','econ'],['污染风险','risk']],
+   cond:()=>true,
+   variants:[
+     {short:'直接直排', label:'🚰 直接排入大海（省钱）', econDelta:10,
+      desc:'零处理成本，水质迅速恶化。',
+      steps:[
+        {title:'📍 第1步：污水直排', fx:'pipe',
+         text:'生活污水未经处理直接排入海中，水面泛起浑浊的泡沫……',
+         d:{water:-30}},
+        {title:'📍 第2步：浮游生物暴增', fx:'bloom',
+         text:'"肥水"养出大批浮游生物，水体缺氧、发绿……',
+         d:{water:-15, iso:+15}},
+      ]},
+     {short:'简易处理', label:'🧴 简易沉淀处理后排放', econDelta:4,
+      desc:'花小钱建沉淀池，能拦住大部分悬浮物，但营养盐还是超标。',
+      steps:[
+        {title:'📍 沉淀池投入使用', fx:'pipe',
+         text:'沉淀池拦下了大半垃圾和悬浮物，但溶解在水里的营养盐仍然让海水悄悄变肥……',
+         d:{water:-12, iso:+8}},
+      ]},
+   ]},
+  {id:'chem', icon:'🏭', name:'化工厂入驻', type:'econ', minLevel:2,
+   desc:'最大的经济诱惑：税收和就业都来了。但废水怎么处理，差别巨大。',
+   tags:[['经济 +22~40','econ'],['重污染','risk']],
+   cond:()=>!S.chem,
+   variants:[
+     {short:'裸奔入驻', label:'💸 引进来再说（不加约束）', econDelta:40,
+      desc:'税收和就业最大化，但对方明确表示"环保设施以后再说"。',
+      steps:[
+        {title:'📍 第1步：化工厂投产', fx:'chem',
+         text:'化工厂的烟囱竖了起来，就业和税收让小镇兴奋不已。但废水处理设施，他们"暂时省了"……',
+         d:{water:-20}},
+        {title:'📍 第2步：偷排频发', fx:'pipe',
+         text:'夜间管道偷偷向潮沟排放化工废水，鱼开始翻肚，水体泛着诡异的颜色……',
+         d:{water:-20, iso:+12}},
+        {title:'📍 第3步：毒性沉积', fx:'borer',
+         text:'有毒沉积物毒死了底栖生物，螃蟹和小鱼大批消失；虚弱的红树再也撑不住了……',
+         d:{tree:-15, pred:-25}},
+      ]},
+     {short:'带条件入驻', label:'📜 带环保条款入驻（先建处理线）', econDelta:22, flag:'chemGreen',
+      desc:'先建废水处理线才允许投产，收入少一些，但污染可控。',
+      steps:[
+        {title:'📍 化工厂带着环保设施投产', fx:'chem',
+         text:'合同白纸黑字：废水处理线与主体工程同步启用。税收少了些，但潮沟里的鱼还活着……',
+         d:{water:-8, iso:+5}},
+      ]},
+   ]},
+  {id:'tourism', icon:'🛶', name:'开发生态旅游', type:'econ', minLevel:2, econDelta:15,
+   desc:'观鸟栈道和游船带来收入，大部分游客有环保意识 —— 但仍有干扰。',
+   tags:[['经济 +15','econ'],['轻微干扰','risk']],
+   cond:()=>!S.tourism,
+   steps:[
+     {title:'📍 生态旅游开张', fx:null,
+      text:'观鸟栈道建成了，游客们在栈道上拍照打卡。大多数人都很爱护这里，只是游船偶尔惊扰滩涂上的水鸟和螃蟹……',
+      d:{pred:-8, water:-4}},
+   ]},
+  {id:'plant', icon:'🛡️', name:'投资污水处理厂', type:'protect', minLevel:1, econDelta:-25,
+   desc:'花钱治理污染，让水质逐步恢复，给红树喘息的机会。',
+   tags:[['成本 −25','econ'],['改善水质','protect']],
+   cond:()=>!S.sewage,
+   steps:[
+     {title:'📍 污水处理厂建成', fx:'plant',
+      text:'污水不再直排！处理厂日夜运转，水质开始一点点恢复。',
+      d:{water:+25, iso:-10}},
+   ]},
+  {id:'ban', icon:'🚫', name:'禁止过度捕捞', type:'protect', minLevel:1, econDelta:-5,
+   desc:'设为休渔区，螃蟹和小鱼的族群慢慢回来，天敌重新巡逻。',
+   tags:[['渔民收入 −5','econ'],['恢复天敌','protect']],
+   cond:()=>!S.banFishing,
+   steps:[
+     {title:'📍 休渔区设立', fx:'morefish',
+      text:'渔网收起来了。滩涂上重新出现螃蟹的身影，水里鱼群多了起来。',
+      d:{pred:+38}},
+   ]},
+  {id:'newtree', icon:'🌱', name:'种植新红树', type:'protect', minLevel:1, econDelta:-10,
+   desc:'扩大森林面积。但注意：新树苗需要健康的水质才能成活。',
+   tags:[['成本 −10','econ'],['恢复森林','protect']],
+   cond:()=>true,
+   steps:[
+     {title:'📍 种下新树苗', fx:'treeok',
+      text:'志愿者们在滩涂上种下一批秋茄苗……',
+      d:{tree: ()=>S.water>=60 ? +20 : +4},
+      warnIf: ()=>S.water<60 ? '⚠️ 水质太差，大部分树苗没能成活……先治理污染，再种树吧！' : null},
+   ]},
+  {id:'cleanup', icon:'🗑️', name:'清理海漂垃圾', type:'protect', minLevel:1, econDelta:-5,
+   desc:'组织净滩行动，清理缠在气生根上的垃圾和渔网，让红树"呼吸"更顺畅。',
+   tags:[['成本 −5','econ'],['小幅改善','protect']],
+   cond:()=>true,
+   steps:[
+     {title:'📍 净滩行动', fx:null,
+      text:'塑料瓶、旧渔网被一件件搬走，气生根重新露出水面，红树舒服地吐了个泡泡。',
+      d:{water:+6, tree:+3}},
+   ]},
+  {id:'dredge', icon:'🌊', name:'修复潮沟水文', type:'protect', minLevel:2, econDelta:-8,
+   desc:'疏通被虾塘和工程堵住的潮沟，恢复自然潮汐节律，缓解红树长期淹水压力。',
+   tags:[['成本 −8','econ'],['恢复水文','protect']],
+   cond:()=>true,
+   steps:[
+     {title:'📍 潮沟疏浚', fx:null,
+      text:'挖泥船疏通了潮沟，海水重新随潮涨落。长期积水的滩涂慢慢干了，红树的"脚"终于能透口气。',
+      d:{water:+5, tree:+10}},
+   ]},
+  {id:'closeduck', icon:'⚠️', name:'关闭养鸭场', type:'protect', minLevel:1, econDelta:-15,
+   desc:'截断最大的污染源，鸭群迁走，螃蟹的滩涂之家得以安宁。会有经济损失。',
+   tags:[['经济 −15','econ'],['截断污染','protect']],
+   cond:()=>S.duckFarm,
+   steps:[
+     {title:'📍 养鸭场关停', fx:'closepipe',
+      text:'排污管道关闭了，鸭群迁往别处。污染源被截断，但积累的损害还需要时间恢复……',
+      d:{water:+14, pred:+14}},
+   ]},
+  /* ---- 应急翻盘卡（危机时解锁，配合"危机响应"可力挽狂澜） ---- */
+  {id:'rescue', icon:'🚑', name:'应急救援行动', type:'protect', minLevel:1, econDelta:-12,
+   desc:'专家联合救援队进场：突击截污、补苗、投放天敌一次到位。指标越危急效果越猛（危急时自动 ⚡ 加成 50%）。',
+   tags:[['成本 −12','econ'],['力挽狂澜','protect'],['仅限危急','risk']],
+   cond:()=>S.tree<45||S.water<45||S.iso>=60,
+   steps:[
+     {title:'📍 联合救援队进场', fx:'morefish',
+      text:'市局专家连夜进场：移动污水处理车轰鸣，突击封堵偷排口，蟹苗鱼苗一桶桶倒回潮沟。绝境之中，人和设备都到了。',
+      d:()=>({water:S.water<45?+14:+8, tree:S.tree<45?+14:+8, pred:+10, iso:-10})},
+   ]},
+  /* ---- 可重复的日常管理卡 ---- */
+  {id:'monitor', icon:'🔬', name:'生态日常监测', type:'protect', minLevel:1, econDelta:-4,
+   desc:'巡护员例行记录水质、清点蟹洞、给红树体检 —— 数据让每个决策更有依据。',
+   tags:[['成本 −4','econ'],['小幅改善','protect']],
+   cond:()=>true,
+   steps:[
+     {title:'📍 例行巡护', fx:null,
+      text:'巡护艇慢慢划过潮沟，水质采样、蟹洞计数、蛀孔拍照……一切尽在掌握。',
+      d:{water:+2, tree:+1}},
+   ]},
+  {id:'stock', icon:'🐟', name:'增殖放流', type:'protect', minLevel:1, econDelta:-6,
+   desc:'向潮沟投放青蟹苗和石斑鱼苗，直接补充天敌种群。',
+   tags:[['成本 −6','econ'],['恢复天敌','protect']],
+   cond:()=>true,
+   steps:[
+     {title:'📍 放流日', fx:null,
+      text:'孩子们提着水桶，把一批批蟹苗鱼苗放归大海。滩涂很快热闹起来。',
+      d:{pred:+15}},
+   ]},
+  {id:'edu', icon:'📢', name:'社区环保宣传', type:'protect', minLevel:1, econDelta:-4,
+   desc:'进村入户讲团水虱的故事 —— 居民有了保护意识，偷排和乱捕都会减少。',
+   tags:[['成本 −4','econ'],['意识提升','protect']],
+   cond:()=>true,
+   steps:[
+     {title:'📍 科普进村', fx:null, report:'poster',
+      text:'村委会门口拉起横幅："留住天敌，就是留住刹车"。大娘们听得直点头，孩子们抢着传看宣传单。',
+      d:{pred:+5, water:+3}},
+   ]},
+  /* ---- 条件解锁的治理卡 ---- */
+  {id:'refit', icon:'🔧', name:'化工厂环保改造', type:'protect', minLevel:2, econDelta:-15,
+   desc:'强制化工厂加装废水处理线 —— 不用赶走它，也能止住偷排。保住税源的两全法。',
+   tags:[['成本 −15','econ'],['截断污染','protect']],
+   cond:()=>S.chem && !S.chemGreen,
+   steps:[
+     {title:'📍 废水处理线启用', fx:'chemgreen',
+      text:'在新政策与驻厂监督下，化工厂的废水处理线终于运转起来，烟囱的颜色都清淡了。',
+      d:{water:+12, iso:-6}},
+   ]},
+  {id:'shrinkduck', icon:'🦆', name:'养鸭场缩减转型', type:'protect', minLevel:1, econDelta:-8,
+   desc:'不必一刀切关停：减栏一半、粪便还田、远离滩涂 —— 折中方案。',
+   tags:[['经济 −8','econ'],['减污','protect']],
+   cond:()=>S.duckFarm && !S.duckEco,
+   steps:[
+     {title:'📍 减栏转生态', fx:'duckeco',
+      text:'鸭群减半迁往坡地，改喂生态饲料，粪便统一收集做农家肥。',
+      d:{water:+8, pred:+10}},
+   ]},
+  {id:'ripshrimp', icon:'🚧', name:'拆除虾塘还湿', type:'protect', minLevel:1, econDelta:-10,
+   desc:'推平围堰，退塘还湿，让潮水重新漫上滩涂 —— 生态补偿的代价不小。',
+   tags:[['经济 −10','econ'],['恢复湿地','protect']],
+   cond:()=>S.shrimp,
+   steps:[
+     {title:'📍 退塘还湿', fx:'ripshrimp',
+      text:'挖掘机推平了围堰，潮水第一次重新漫上这片湿地。弹涂鱼当天就回来了。',
+      d:{water:+10, pred:+12}},
+   ]},
+  {id:'limitboat', icon:'🛥️', name:'游船限航管控', type:'protect', minLevel:2, econDelta:-3,
+   desc:'给生态旅游立规矩：限速、改外航道、禁入核心区。',
+   tags:[['成本 −3','econ'],['减少干扰','protect']],
+   cond:()=>S.tourism,
+   steps:[
+     {title:'📍 限航令生效', fx:null,
+      text:'游船改走外航道，滩涂重新安静下来，水鸟落回了浅滩。',
+      d:{pred:+8}},
+   ]},
+];
+
+function sample(arr,n){
+  const a=arr.slice();
+  for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}
+  return a.slice(0,n);
+}
+/* 组建本轮手牌：3 张。解锁型行动卡（关停/改造/转型等）优先保证出现 1 张 */
+function buildHand(avail){
+  const PRIORITY=['closeduck','refit','shrinkduck','ripshrimp','limitboat','rescue'];
+  const priority=avail.filter(c=>PRIORITY.includes(c.id));
+  const rest=sample(avail.filter(c=>!priority.includes(c)), avail.length);
+  const hand=[];
+  if(priority.length) hand.push(priority[Math.floor(Math.random()*priority.length)]);
+  while(hand.length<3 && rest.length){
+    hand.push(rest.splice(Math.floor(Math.random()*rest.length),1)[0]);
+  }
+  return hand.map(c=>c.id);
+}
+function availCards(){
+  const lv = S.level ? S.level.id : 1;
+  return CARDS.filter(c=>c.minLevel<=lv && c.cond());
+}
+function renderCards(){
+  const box=$('cards'); box.innerHTML='';
+  const decisionTime = S.stage==='decision';
+  const avail = availCards();
+  let shown = avail;
+  // 每轮随机抽 3 张 —— 管理员一次只能集中办一件事，选项贵精不贵多
+  if(decisionTime && avail.length>3){
+    if(!S.hand || !S.hand.length){
+      S.hand = buildHand(avail);
+    }
+    shown = avail.filter(c=>S.hand.includes(c.id));
+    // 兜底：若条件变化导致手牌不足 3 张，从剩余卡池补齐
+    if(shown.length<3){
+      avail.filter(c=>!S.hand.includes(c.id)).slice(0,3-shown.length).forEach(c=>shown.push(c));
+      S.hand = shown.map(c=>c.id);
+    }
+  }
+  const rb=$('rerollBtn');
+  rb.style.display = (decisionTime && avail.length>3 && !S.busy) ? '' : 'none';
+  rb.disabled = S.rerolled>=2;
+  rb.textContent = S.rerolled>=2 ? '🔄 本轮已换完' : '🔄 换一批（剩 '+(2-S.rerolled)+' 次）';
+  const db=$('dblBtn');
+  db.style.display = (decisionTime && !S.busy && getInv('double')>0) ? '' : 'none';
+  db.disabled = S._dblArmed;
+  db.textContent = S._dblArmed ? '✖2 已激活（下一张卡）' : '📋 双倍券 ×'+getInv('double');
+  shown.forEach((c,i)=>{
+    const b=document.createElement('button');
+    b.className='card deal';   // 逐张发牌动画（animation-delay 递增）
+    b.style.animationDelay=(i*0.09)+'s';
+    b.innerHTML='<div class="c-head">'+c.icon+' '+c.name+'</div>'+
+      '<div class="c-desc">'+c.desc+'</div>'+
+      '<div class="c-tags">'+c.tags.map(t=>'<span class="tag '+t[1]+'">'+t[0]+'</span>').join('')+
+      (c.variants?'<span class="tag econ">2 种做法</span>':'')+'</div>';
+    b.disabled = !decisionTime || S.busy;
+    b.onclick=()=>confirmCard(c);
+    // 动画播完摘掉 deal 类，否则 fill:both 会盖住 hover 位移
+    b.addEventListener('animationend',()=>{ b.classList.remove('deal'); b.style.animationDelay=''; },{once:true});
+    box.appendChild(b);
+  });
+}
+
+function confirmCard(c){
+  /* 财政红线守卫：执行后将跌破破产线(−30)的卡，先警告再确认，防止"种个树突然猝死" */
+  const guard=(name, delta, go)=>{
+    if(lethalCost(delta)) confirmLethal(name, delta, go); else go();
+  };
+  // 变体决策：同一件事，多种做法
+  if(c.variants){
+    const m=$('modal');
+    m.innerHTML='<h3>🃏 '+c.icon+' '+c.name+' —— 怎么做？</h3>'+
+      '<div class="m-body">同一件事有不同的做法，代价和后果完全不同：</div><div id="varChoices"></div>';
+    const box=$('varChoices');
+    c.variants.forEach((v,vi)=>{
+      const b=document.createElement('button');
+      b.className='event-choice';
+      b.style.animationDelay=(vi*0.12)+'s';
+      b.innerHTML='<div class="ec-label">'+v.label+'<span style="font-weight:400;color:#5a6b7d;font-size:12px;">（经济 '+(v.econDelta>0?'+':'')+v.econDelta+'）</span></div>'+
+        '<div class="ec-desc">'+v.desc+'</div>';
+      b.onclick=()=>{
+        closeModal();
+        guard(c.name+' · '+v.short, v.econDelta,
+          ()=>runSteps(Object.assign({}, c, {name:c.name+' · '+v.short, econDelta:v.econDelta, steps:v.steps, flag:v.flag||null})));
+      };
+      box.appendChild(b);
+    });
+    $('overlay').classList.remove('hidden');
+    return;
+  }
+  if(c.type==='econ'){
+    showModal('⚠️ 确认决策', '<div class="m-body">你确定要<b>「'+c.name+'」</b>吗？<br>这会带来经济收入，但也可能影响环境……<br><small>💡 决策前想一想：先保护，还是先发展？</small></div>',
+      [{label:'取消',cls:'ghost',fn:closeModal},
+       {label:'确认执行',fn:()=>{closeModal();runSteps(c);}}]);
+  } else {
+    guard(c.name, c.econDelta, ()=>runSteps(c));
+  }
+}
+/* 会否一击跌破破产线（双倍券会让花费也 ×2，一并计入） */
+function lethalCost(delta){
+  if(!delta || delta>=0 || !S.level || S.stage==='ended') return false;
+  return S.econ + delta*(S._dblArmed?2:1) <= BANKRUPT;
+}
+function confirmLethal(name, delta, go){
+  const after = S.econ + delta*(S._dblArmed?2:1);
+  showModal('💰 财政红线警告！',
+    '<div class="m-body">执行<b>「'+name+'」</b>要花 <b>'+delta+'</b>，执行后经济将跌到 <b style="color:#c0392b;">'+after+'</b>（破产线 −30）。<br><br>一旦越过红线，你会被<b>立即撤职（游戏失败）</b>！<br><small>💡 建议先选有收入的发展类决策搞钱，或换一张便宜的保护卡。每局通关/成就都有金币入账，别让账本先崩了。</small></div>',
+    [{label:'取消，我先搞钱',cls:'ghost',fn:closeModal},
+     {label:'⚠️ 仍然执行',fn:()=>{closeModal();go();}}]);
+}
+
+/* ================= 分步观察引擎 ================= */
+let queue=[], stepIdx=0, activeCard=null;
+/* 乐子管理员整蛊：正常打出保护卡后，必跟一段"计划外插曲"把收益吃回去；超能力用得越多越狠 */
+function trollPrank(){
+  const n=S._trollHeal||0;
+  const pool=[
+    {title:'🎲 计划外的小插曲', prank:true, text:'上游夜里偷偷排了一股污水，刚见效的治理被打了个折扣……', d:{water:-(4+n*2), iso:+3}},
+    {title:'🎲 运气不太站在你这边', prank:true, text:'一阵反常的离岸风把污染团又吹了回来……', d:{water:-(4+n*2)}},
+    {title:'🎲 意外消息', prank:true, text:'巡护员小林来报：有人半夜往滩涂倾倒建筑垃圾，压坏了一片气生根……', d:{tree:-(4+n*2), water:-3}},
+    {title:'🎲 天有不测风云', prank:true, text:'一股异常大潮漫过补种区，部分新苗被连根卷走……', d:{tree:-(5+n*2)}},
+    {title:'🎲 离奇的设备故障', prank:true, text:'监测浮标集体掉线，处理厂阀门"恰好"卡死了一整晚……', d:{water:-(5+n*2), iso:+2}}
+  ];
+  return pool[Math.floor(Math.random()*pool.length)];
+}
+function runSteps(card){
+  S.busy=true; activeCard=card;
+  queue=card.steps.slice();
+  if(isTrollAdmin() && card.type==='protect') queue.push(trollPrank());   // 整蛊：保护卡结尾必附赠一段倒霉事
+  stepIdx=0;
+  S.passiveDone=false;
+  // 双倍行动券
+  if(S._dblArmed){ S._dblMult=2; S._dblArmed=false; addInv('double',-1);
+    toast('📋 双倍行动券生效：本次行动效果 ×2！'); }
+  else S._dblMult=1;
+  $('stageBadge').textContent='🔍 观察连锁反应（第 '+S.round+' 轮）';
+  $('stepActions').innerHTML='';
+  renderCards();
+  showStep();
+}
+/* ===== 行动效果大汇报：全屏数字卡动画，替代"小框里一行小字" ===== */
+let _fxTm1=null,_fxTm2=null;
+function showFxBanner(eff, ce){
+  const veil=$('fxVeil');
+  clearTimeout(_fxTm1); clearTimeout(_fxTm2);
+  const NM={water:['💧','水质'],tree:['🌳','红树'],iso:['🦐','团水虱'],pred:['🦀','天敌']};
+  const items=[];
+  for(const k in NM){ if(eff && eff[k]) items.push({ico:NM[k][0],name:NM[k][1],val:eff[k].val,badge:(eff[k].boosted?'⚡危机×1.5':'')+(eff[k].dbl?' ✖2':'')}); }
+  if(ce!==undefined && ce) items.push({ico:'💰',name:'经济',val:ce,badge:''});
+  if(!items.length) return;
+  const ups=items.filter(i=>i.val>0).length, downs=items.filter(i=>i.val<0).length;
+  const sum = ups>downs ? {cls:'good',txt:'👍 生态在变好！'} : downs>ups ? {cls:'bad',txt:'⚠️ 情况在恶化……'} : {cls:'mid',txt:'⚖️ 有得也有失'};
+  veil.innerHTML =
+    '<div class="fx-title">📋 行动效果汇报</div>'+
+    '<div class="fx-sum '+sum.cls+'">'+sum.txt+'</div>'+
+    '<div class="fx-row">'+items.map((it,i)=>
+      '<div class="fx-chip '+(it.val>0?'up':'down')+'" style="animation-delay:'+(0.2+i*0.16)+'s;">'+
+        '<span class="fxc-ico">'+it.ico+'</span>'+
+        '<span><div class="fxc-name">'+it.name+'</div>'+
+        '<div class="fxc-val">'+(it.val>0?'+':'')+it.val+'</div></span>'+
+        (it.badge?'<span class="fxc-badge">'+it.badge+'</span>':'')+
+      '</div>').join('')+'</div>';
+  veil.classList.remove('out'); veil.classList.add('show');
+  _fxTm1=setTimeout(()=>veil.classList.add('out'), 2500);
+  _fxTm2=setTimeout(()=>{ veil.classList.remove('show','out'); veil.innerHTML=''; }, 2950);
+}
+
+/* ===== 宣传海报：社区宣传卡弹出一张讲清"因果链"的科普海报 ===== */
+function showPoster(){
+  const veil=$('posterVeil');
+  veil.innerHTML=
+    '<div class="poster">'+
+      '<span class="poster-tag">科普宣传</span>'+
+      '<div class="poster-title">团水虱为什么会暴发？<br>一条"因果链"看明白</div>'+
+      '<div class="poster-sub">红树林保护宣传 · 转给邻居看看</div>'+
+      '<div class="poster-divider"></div>'+
+      '<div class="poster-chain">'+
+        '<div class="pc-step"><span class="pc-ico">🚽</span>养殖污水<br>直排入海</div>'+
+        '<span class="pc-arrow">→</span>'+
+        '<div class="pc-step"><span class="pc-ico">🥤</span>水体富营养化<br>（水变"肥"）</div>'+
+        '<span class="pc-arrow">→</span>'+
+        '<div class="pc-step bad"><span class="pc-ico">🦐</span>团水虱<br>疯狂繁殖</div>'+
+        '<span class="pc-arrow">→</span>'+
+        '<div class="pc-step bad"><span class="pc-ico">🌳</span>啃食气生根<br>红树退化</div>'+
+      '</div>'+
+      '<div class="poster-item"><span class="p-ico">🦐</span><span><b>为什么团水虱会增多？</b>养鸭、养虾的废水富含营养，直排入海后水变"肥"——团水虱最爱这种水，繁殖速度成倍涨。</span></div>'+
+      '<div class="poster-item"><span class="p-ico">🦀</span><span><b>养殖还有第二个代价：</b>滩涂被占、滥捕滥捞，青蟹和石斑鱼这些"天敌"越来越少——刹车的绳子松了，团水虱更加失控。</span></div>'+
+      '<div class="poster-item"><span class="p-ico">🌳</span><span><b>最后买单的是红树：</b>气生根被啃坏，树林退化，鱼虾蟹失去家园，风暴潮也多了道缺口。</span></div>'+
+      '<div class="poster-why">'+
+        '<div class="pw-title">📢 那宣传有什么用？</div>'+
+        '<div class="pw-text">大家看懂了这条因果链，就会——<b>污水先处理再排放 ✋ 潮沟里少下网 🕸️ 发现偷排马上举报 📞</b><br>源头掐断了，水不肥了、天敌回来了，<b>负面效果自然一项项减少。</b></div>'+
+      '</div>'+
+      '<div class="poster-stamp">✔ 已张贴至村口公告栏</div>'+
+      '<div class="poster-foot">红树林保护区管理站 · 宣</div>'+
+      '<button class="poster-close" onclick="closeReport(\'posterVeil\')">收下海报 ✓</button>'+
+    '</div>';
+  veil.classList.add('show');
+}
+
+/* ===== 直播数据战报：云端研学直播弹出实时数据面板 ===== */
+function showLiveReport(){
+  const veil=$('liveVeil');
+  const w=(2.1+Math.random()*1.2).toFixed(1);      // 观看 2.1~3.3 万
+  const like=(0.8+Math.random()*0.9).toFixed(1);   // 点赞 0.8~1.7 万
+  const fav=Math.min(99, 92+Math.floor(Math.random()*8)); // 好评率 92~99
+  veil.innerHTML=
+    '<div class="live-panel">'+
+      '<div class="live-head"><span class="live-dot"></span>📺 云端研学 · 直播中</div>'+
+      '<div class="live-title">「跟着镜头看红树林」 · 市第二小学专场</div>'+
+      '<div class="live-big">'+w+' 万</div>'+
+      '<div class="live-big-label">实时在线观看人数</div>'+
+      '<div class="live-row"><span>❤️ 点赞</span><b>'+like+' 万</b></div>'+
+      '<div class="live-row"><span>💬 弹幕精选</span><b>"螃蟹干饭也太可爱了吧！"</b></div>'+
+      '<div class="live-row"><span>📊 好评率</span><b>'+fav+'%</b></div>'+
+      '<div class="live-verdict">'+(fav>=95?'🔥 数据爆了！这片林子的名气，今晚传遍全城':'👍 数据不错！更多孩子认识了红树林')+'</div>'+
+      '<button class="live-close" onclick="closeReport(\'liveVeil\')">下播 ✓</button>'+
+    '</div>';
+  veil.classList.add('show');
+}
+
+function showStep(){
+  const st=queue[stepIdx];
+  const dd = st.d ? (typeof st.d==='function' ? st.d() : st.d) : null;
+  /* 危机响应：保护类卡在对应指标危急(<40)时，正面效果 ×1.5 —— 力挽狂澜的关键机制 */
+  const crisisBoost=(k,v)=>{
+    if(!activeCard || activeCard.type!=='protect' || v<=0 || k==='iso') return {v, boosted:false};
+    const cur={water:S.water,tree:S.tree,iso:S.iso,pred:S.pred}[k];
+    return cur<40 ? {v:Math.round(v*1.5), boosted:true} : {v, boosted:false};
+  };
+  let eff={};
+  const mult=S._dblMult||1;
+  if(dd){
+    for(const k in dd){
+      let dv = dd[k];                              // 关键修复：d 的值可能是函数（如种树卡按水质求值），先求值再结算
+      if(typeof dv==='function') dv=dv();
+      if(typeof dv!=='number' || isNaN(dv)) dv=0;  // 兜底：任何 NaN/非法值一律按 0 处理，绝不污染存档状态
+      const b=crisisBoost(k,dv*mult); const v=b.v; eff[k]={val:v, boosted:b.boosted, dbl:mult>1};
+      if(k==='water') S.water=clamp(S.water+v);
+      if(k==='tree')  S.tree =clamp(S.tree +v);
+      if(k==='iso')   S.iso  =clamp(S.iso  +v);
+      if(k==='pred')  S.pred =clamp(S.pred +v);
+    }
+    S.lowTree=Math.min(S.lowTree,S.tree); S.lowWater=Math.min(S.lowWater,S.water);
+  }
+  if(stepIdx===0 && activeCard){
+    if(activeCard.econDelta){
+      let ce=activeCard.econDelta*mult;
+      if(isTrollAdmin() && ce>0) ce=Math.ceil(ce/2);   // 整蛊：收入类卡到账悄悄缩水一半
+      S.econ += ce;
+    }
+    if(activeCard.type==='econ') S.everDirty=true;
+    if(activeCard.type==='econ') S.dirtySet.add(activeCard.id);
+    if(activeCard.id==='duck') S.duckFarm=true;
+    if(activeCard.id==='shrimp') S.shrimp=true;
+    if(activeCard.id==='chem') S.chem=true;
+    if(activeCard.id==='direct') S.direct=true;
+    if(activeCard.id==='tourism') S.tourism=true;
+    if(activeCard.id==='plant') S.sewage=true;
+    if(activeCard.id==='ban') S.banFishing=true;
+    if(activeCard.id==='shrinkduck') S.duckEco=true;
+    if(activeCard.id==='rescue') S._usedRescue=true;
+    if(activeCard.id==='ripshrimp') S.shrimp=false;
+    if(activeCard.id==='closeduck') S.duckFarm=false;   // 永久截断污染源
+    if(activeCard.flag) S[activeCard.flag]=true;        // 变体决策带来的状态（生态散养/带条件入驻等）
+  }
+  applyFx(st.fx);
+  $('stepTag').textContent=st.title;
+  const warnTxt = typeof st.warnIf==='function' ? st.warnIf() : st.warnIf;
+  $('stepText').textContent = st.text + (warnTxt?' '+warnTxt:'');
+  let dh='';
+  if(stepIdx===0 && activeCard && activeCard.econDelta){
+    let ce=activeCard.econDelta*mult;
+    if(isTrollAdmin() && ce>0) ce=Math.ceil(ce/2);
+    dh+='<span class="'+(ce>0?'delta-pos':'delta-neg')+'">💰经济 '+(ce>0?'+':'')+ce+(mult>1?' ×2':'')+'</span>';
+  }
+  if(st.d) for(const k in eff){
+    const nm={water:'💧水质',tree:'🌳红树',iso:'🦐团水虱',pred:'🦀天敌'}[k];
+    dh+='<span class="'+(eff[k].val>0?'delta-pos':'delta-neg')+'">'+nm+' '+(eff[k].val>0?'+':'')+eff[k].val+(eff[k].boosted?' ⚡':'')+(eff[k].dbl?' ×2':'')+'</span>';
+  }
+  $('stepDelta').innerHTML=dh;
+  render();
+  /* 全屏大汇报：这一步的所有数值变化，用大数字卡动画展示（好绿坏红，一眼看清） */
+  let ceOut;
+  if(stepIdx===0 && activeCard && activeCard.econDelta){
+    ceOut=activeCard.econDelta*mult;
+    if(isTrollAdmin() && ceOut>0) ceOut=Math.ceil(ceOut/2);
+  }
+  showFxBanner(eff, ceOut);
+  /* 特殊演出：宣传海报 / 直播战报 */
+  if(st.report==='poster') setTimeout(showPoster, 500);
+  if(st.report==='live')   setTimeout(showLiveReport, 500);
+  // 乐子管理员：突发情况大字弹在屏幕中央，让你没法忽视倒霉事
+  if(st.prank){
+    setTimeout(()=>{ showModal('🎲 突发情况',
+      '<div class="m-body">'+st.text+'<br><small>💡 这段插曲不占用决策，但代价是真的。</small></div>',
+      [{label:'……倒霉', fn:closeModal}]); }, 350);
+  }
+  // 步骤中途红树跌破警戒线：立即预警（不等下一轮）
+  if(S.tree<40 && S.tree>0 && !S._warned40){
+    S._warned40=true;
+    showModal('🚨 红树告急！','<div class="m-body">刚才的变化已让红树健康度跌破 <b>40</b>！若继续恶化到 0，森林将崩溃。<br><small>💡 立刻截断污染源、恢复天敌，还有希望！</small></div>',[{label:'继续观察',fn:closeModal}]);
+  }
+  const acts=$('stepActions'); acts.innerHTML='';
+  const last = stepIdx>=queue.length-1;
+  if(last){
+    /* 大知识弹窗：卡牌结算完必弹一课（海报/战报类则等特殊演出关闭后接力弹） */
+    const kt=KNOW_MAP[activeCard ? activeCard.id : ''] || 'misc';
+    if(st.report) _afterReportClose=()=>showKnowBig(kt);
+    else setTimeout(()=>showKnowBig(kt), 650);
+  }
+  const btn=document.createElement('button');
+  btn.className='btn';
+  btn.textContent = last ? '本轮结束，查看结果 →' : '继续观察 →';
+  btn.onclick=()=> last ? endRound() : (stepIdx++, showStep());
+  acts.appendChild(btn);
+}
+
+/* 当前活跃的污染源（生态化改造后的设施不计入） */
+function activeSources(){
+  return (S.duckFarm && !S.duckEco) || (S.chem && !S.chemGreen) || S.shrimp ||
+    (S.direct && !S.sewage) || (S.ambientPipe && !S.sewage);
+}
+/* 排污口显隐：跟随污染源状态 */
+function updatePipe(){
+  const hasSource = activeSources() || S.duckFarm;  // 生态鸭场仍有少量冲洗水
+  $('pipeG').classList.toggle('hidden', !hasSource);
+}
+function applyFx(fx){
+  if(fx==='pipe'){ updatePipe(); }
+  if(fx==='plant'){ $('sewagePlant').classList.remove('hidden'); updatePipe(); }
+  if(fx==='ducks'){ $('duckFarm').classList.remove('hidden'); $('duckFlock').classList.remove('hidden'); $('puddle').classList.remove('hidden'); }
+  if(fx==='chem'){ $('chemPlant').classList.remove('hidden'); }
+  if(fx==='chemgreen'){ toast('🔧 化工厂废水处理线启用，偷排停止！'); updatePipe(); }
+  if(fx==='duckeco'){ toast('🌿 养鸭场已转型生态散养，污染大幅减少'); updatePipe(); }
+  if(fx==='ripshrimp'){ $('shrimpPond').classList.add('hidden'); toast('🌊 虾塘拆除，潮水重新漫上湿地！'); updatePipe(); }
+  if(fx==='closepipe'){ $('duckFarm').classList.add('hidden'); $('duckFlock').classList.add('hidden'); $('puddle').classList.add('hidden'); updatePipe();
+    toast('✅ 养鸭场已永久关停！它的排污不再计入每轮的污染累积'); }
+  if(fx==='bloom'){ toast('🌊 水体富营养化：藻类与浮游生物暴增！'); }
+  if(fx==='iso'){ toast('🦐 团水虱数量明显上升！'); }
+  if(fx==='borer'){ toast('🕳️ 红树气生根蛀孔加剧！'); }
+  if(fx==='fewfish'){ toast('🎣 过度捕捞：天敌正在消失……'); }
+  if(fx==='morefish'){ toast('🐟 天敌族群开始恢复！'); }
+  if(fx==='treeok'){ toast('🌱 新树苗种下了！'); }
+}
+
+/* 被动的持续恶化 / 恢复（每轮结束时结算一次） */
+function passiveSteps(){
+  const steps=[];
+  const hard = S.level && S.level.id>=3;
+  const anySource = S.duckFarm || S.chem || (!S.sewage);
+  if(S.water<60 && activeSources()){
+    steps.push({title:'⏳ 污染持续累积', fx:null,
+      text:'污染源还在，富营养化持续加剧，水体越来越"肥"……',
+      d:{water: hard?-8:-6, iso:+5}});
+  }
+  if(S.iso>=55 && S.pred<45){
+    steps.push({title:'⏳ 失控的蛀蚀', fx:'borer',
+      text:'没有天敌压制，虚弱的红树正在被团水虱一点点蛀空……',
+      d:{tree: hard?-14:-12, iso:+4}});
+  } else if(S.iso>=55 && S.tree<55){
+    steps.push({title:'⏳ 红树持续衰弱', fx:'borer',
+      text:'蛀孔在虚弱的树上蔓延，红树越来越虚弱……',
+      d:{tree:-8}});
+  }
+  if(S.sewage && S.water<78 && !(S.duckFarm&&!S.duckEco) && !(S.chem&&!S.chemGreen) && !S.shrimp){
+    steps.push({title:'⏳ 治理见效', fx:null,
+      text:'污水处理厂持续运转，水质正在慢慢好转。',
+      d:{water:+7, iso:-3}});
+  }
+  if(S.banFishing && S.pred<80){
+    steps.push({title:'⏳ 天敌回归', fx:null,
+      text:'休渔区里，螃蟹和小鱼的族群稳步恢复。',
+      d:{pred:+7}});
+  }
+  // 地狱模式：神不知鬼不觉的额外损耗，包装成"不明渗漏源"调查；用超能力恢复的次数越多，反噬越猛
+  if(isTrollAdmin()){
+    const n=S._trollHeal||0;
+    steps.push({title:'🔬 异常渗漏调查', fx:null,
+      text: n>0
+        ? '监测站紧急报告：渗漏点已从 1 处扩散到 '+(1+n*2)+' 处！恢复得越快，反噬来得越猛……'
+        : '监测站夜检报告：仍有一股不明渗漏源在暗中活动，水体溶解氧下降，红树根系持续受损……',
+      d:{tree:-(5+3*n), water:-(4+2*n), iso:+2}});
+  }
+  return steps;
+}
+
+function endRound(){
+  activeCard=null;   // 卡片结算完毕：防止被动阶段重复结算收支/重置状态（重复扣钱的 bug 根源）
+  if(S.tree<=0){ render(); return ending('崩溃结局'); }
+  if(S.tree<30) S.wasCritical=true;
+  if(S.wasCritical && S.tree>=60) S.recovered=true;
+  if(!S.passiveDone){
+    const ps=passiveSteps();
+    if(ps.length){
+      S.passiveDone=true;
+      queue=ps; stepIdx=0;
+      $('stageBadge').textContent='⏳ 与此同时……';
+      showStep();
+      return;
+    }
+  }
+  // 经济结算：本轮维护支出
+  S.econ += (S.level ? S.level.upkeep : UPKEEP);
+  render();
+  if(S.econ<=BANKRUPT){ return ending('撤职结局'); }
+  // 胜利判定（每关可有自定义标准，默认红树≥60）
+  const goal=S.level.rounds;
+  const passed = S.level.win ? S.level.win(S) : S.tree>=60;
+  if(S.round>=goal && passed){
+    return ending(S.recovered?'挽救结局':'平衡结局');
+  }
+  if(S.round>=goal && !S.extended){
+    S.extended=true;
+    showModal('📅 考核延期', '<div class="m-body">规定期限已到，但红树健康度还未达到 60。<br>上级决定给你几次额外机会 —— <b>把红树养回来！</b><br><small>💡 先截断污染源、恢复天敌，红树会自己慢慢恢复。</small></div>',
+      [{label:'继续努力',fn:closeModal}]);
+  }
+  nextRound();
+}
+
+function nextRound(){
+  S.busy=false; S.round++;
+  // 随机事件（新回合开始时）；管理员模式：百分百出好事件
+  const chance = S.level ? S.level.eventChance : 0.3;
+  if(isAdmin() || Math.random()<chance){
+    const ev = pickEvent();
+    if(ev){ showEvent(ev); return; }
+  }
+  showRoundStart();
+}
+function showRoundStart(){
+  S.stage='decision'; S.busy=false;
+  S.rerolled=0; S.hand=null;   // 新一轮：重新抽卡
+  // 章节节奏：本轮是一个带标题的故事节拍
+  const beat=roundStory(S.level.id, S.round);
+  showChapter('第 '+S.round+' 天', beat.t);   // 故事运镜：章节卡淡入淡出
+  $('stageBadge').textContent='📖 '+beat.t+'（第 '+S.round+' 轮 / 共 '+S.level.rounds+' 轮）';
+  $('stepTag').textContent='📖 '+beat.t;
+  $('stepText').innerHTML=beat.s+'<br><br><small>'+advice()+'</small>';
+  $('stepDelta').innerHTML='';
+  $('stepActions').innerHTML='<span style="font-size:12px;color:#5a6b7d">👇 在下方卡片中选择一张行动卡片</span>';
+  renderCards(); render();
+  if(S.tree<40 && !S._warned40){ S._warned40=true;
+    showModal('🚨 红树告急！','<div class="m-body">红树健康度已低于 40！如果不立刻截断污染源、恢复天敌，森林将无法挽回……<br><small>💡 提示：关闭污染源 + 投资污水处理厂 + 禁止过度捕捞，三管齐下还有希望！</small></div>',[{label:'明白，马上行动',fn:closeModal}]);
+  }
+  if(S.econ<=-15 && !S._warnedEcon){ S._warnedEcon=true;
+    showModal('💰 财政预警！','<div class="m-body">保护区账上只剩 <b>'+S.econ+'</b>，跌破 <b>−30</b> 你就会被撤职（游戏失败）！<br><small>💡 提示：每轮都有固定支出，突发事件也可能要花钱。适当选择有收入的发展类决策，或减少不必要的开支。</small></div>',[{label:'明白，马上搞钱',fn:closeModal}]);
+  }
+}
+function advice(){
+  const tips=[];
+  if(S.econ<-15) tips.push('财政濒临破产（'+BANKRUPT+' 会被撤职），先搞点收入或砍掉开支');
+  if(S.water<60 && !S.sewage) tips.push('水质正在恶化，污水处理厂会有帮助');
+  if(S.pred<45) tips.push('天敌稀少，考虑禁止过度捕捞');
+  if(S.chem && S.water<60 && !S.chemGreen) tips.push('化工厂可强制环保改造，不必赶走它');
+  if(S.duckFarm && S.water<50 && !S.duckEco) tips.push('养鸭场是主要污染源：可以关停，也可以缩减转型');
+  if(S.shrimp && S.water<55) tips.push('虾塘还在排水，拆除还湿或改循环水都行');
+  if(S.tree<50) tips.push('红树很虚弱，保住它！种树之前先治污');
+  if(!tips.length) tips.push('生态目前稳定。记住：平衡需要持续守护');
+  return '💡 管理员建议：'+tips.join('；')+'。';
+}
+
+/* ================= 随机事件系统 ================= */
+function pickEvent(){
+  let pool = EVENTS.filter(e=>!e.cond || e.cond());
+  if(isAdmin()) pool = pool.filter(e=>GOOD_EVENTS.includes(e.id));   // 管理员：只出幸运事件
+  if(isTrollAdmin()) pool = pool.filter(e=>!GOOD_EVENTS.includes(e.id));   // 地狱模式：幸运事件统统"轮不到你"
+  if(!pool.length) return null;
+  return pool[Math.floor(Math.random()*pool.length)];
+}
+function showEvent(ev){
+  S.busy=true; S.stage='event';
+  $('stageBadge').textContent='⚡ 突发事件 · 第 '+S.round+' 轮';
+  $('stepTag').textContent=ev.icon+' 突发事件：'+ev.title;
+  $('stepText').textContent=ev.text();
+  $('stepDelta').innerHTML='';
+  $('stepActions').innerHTML='';
+  renderCards();
+  const m=$('modal');
+  let html='<div class="ending-badge">'+ev.icon+'</div><h3>突发事件 · '+ev.title+'</h3>'+
+    '<div class="m-body">'+ev.text()+'</div><div id="evChoices"></div>';
+  m.innerHTML=html;
+  const box=$('evChoices');
+  ev.choices.forEach((c,ci)=>{
+    const b=document.createElement('button');
+    b.className='event-choice';
+    b.style.animationDelay=(ci*0.12)+'s';
+    b.innerHTML='<div class="ec-label">'+c.label+'</div><div class="ec-desc">'+c.desc+'</div>';
+    b.onclick=()=>{
+      closeModal();
+      S.eventsDone++;
+      const res=c.apply();
+      render();
+      if(c.report==='live') showLiveReport();   // 直播选择：弹出实时数据战报
+      showModal('⚡ 事件结果 · '+ev.title,
+        '<div class="m-body">'+res+'</div>',
+        [{label:'继续',fn:()=>{closeModal(); S.busy=false; showRoundStart();}}]);
+      /* 大知识弹窗：每个选项都配一课（有战报时等战报关闭再接力弹） */
+      const kt=EV_MAP[ev.id]||'misc';
+      if(c.report==='live') _afterReportClose=()=>showKnowBig(kt);
+      else setTimeout(()=>showKnowBig(kt), 550);
+    };
+    box.appendChild(b);
+  });
+  $('overlay').classList.remove('hidden');
+}
+const EVENTS = [
+  {icon:'🌀', title:'台风预警', id:'typhoon',
+   cond:()=> S.level && S.level.id>=3 && !S.stormGuarded,
+   text:()=> '气象台发布台风橙色预警：预计 48 小时后正面登陆！狂风巨浪可能折断红树枝干、掀翻滩涂。<br><small>💡 红树林本身是天然防风堤，但已经虚弱的林子扛不住超强台风。</small>',
+   choices:[
+     {label:'🛠️ 紧急加固 + 提前排水', desc:'成本 −8，保护红树和滩涂设施，还能顺便检查蛀孔情况',
+      apply:()=>{ S.econ-=8; S.stormGuarded=true;
+        const bonus = S.tree<50 ? +3 : 0; if(bonus) S.tree=clamp(S.tree+bonus);
+        return '✅ 你连夜组织人手加固栈道、疏通排水。台风过境后，林子安然无恙'+(bonus?'，还发现并处理了几处早期蛀孔（红树 +3）':'。')+'<br><span class="delta-neg">💰经济 −8</span>'+(bonus?'<span class="delta-pos">🌳红树 +3</span>':''); }},
+     {label:'🌊 听天由命，不动了', desc:'不花钱，但要看运气：虚弱的红树可能被折断',
+      apply:()=>{
+        if(S.tree<50){ S.tree=clamp(S.tree-15); S.water=clamp(S.water-8);
+          return '🌀 台风撕扯着本就虚弱的树冠，好几棵红树被连根拔起！积水把污染物冲进林子深处……<br><span class="delta-neg">🌳红树 −15</span><span class="delta-neg">💧水质 −8</span>'; }
+        S.tree=clamp(S.tree-4);
+        return '🌀 台风过境，健康的林子扛住了风浪 —— 红树的气生根网正是最好的防波堤，只有几根小枝被吹折。<br><span class="delta-neg">🌳红树 −4</span>'; }},
+   ]},
+  {icon:'🔍', title:'环保督察组来了', id:'inspect',
+   cond:()=> true,
+   text:()=> '上午十点，三辆车停在了管理站门口。督察组出示了证件，要求检查这片海域的污染情况。<br><small>💡 如实上报可能被要求限期整改（花钱），但瞒报一旦被查实后果更严重。</small>',
+   choices:[
+     {label:'📋 如实上报，申请治理经费', desc:'若水质差：强制整改（水质+8，经济−10）；若水质好：获得表扬（经济+5）',
+      apply:()=>{
+        if(S.water<65){ S.water=clamp(S.water+8); S.econ-=10;
+          return '✅ 督察组确认了污染问题，责令限期整改并拨付部分经费。排污口被查封，水质开始好转。<br><span class="delta-pos">💧水质 +8</span><span class="delta-neg">💰经济 −10</span>'; }
+        S.econ+=5;
+        return '🌟 督察组看到清澈的海水和成群的白鹭，在通报里点名表扬了保护区管理站！<br><span class="delta-pos">💰经济 +5</span>'; }},
+     {label:'🤐 临时"处理"一下数据', desc:'省事，但污染继续恶化',
+      apply:()=>{ S.water=clamp(S.water-6);
+        return '📝 报表上的数据"很漂亮"，督察组走了。但真实的污染还在继续，水又暗了一分……<br><span class="delta-neg">💧水质 −6</span>'; }},
+   ]},
+  {icon:'🦠', title:'赤潮警报', id:'redtide',
+   cond:()=> S.water<65,
+   text:()=> '近岸海域检测出赤潮藻类爆发的前兆！水体发红发臭，鱼群开始浮头。<br><small>💡 赤潮是富营养化的极端后果 —— 这正是"水太肥"的恶果。</small>',
+   choices:[
+     {label:'🚨 紧急治理 + 增氧曝气', desc:'成本 −12，控制赤潮并改善水质',
+      apply:()=>{ S.econ-=12; S.water=clamp(S.water+8); S.iso=clamp(S.iso-5);
+        return '✅ 曝气船连续工作三天，赤潮被压制住了。水质明显好转，团水虱的食物也少了一些。<br><span class="delta-pos">💧水质 +8</span><span class="delta-pos">🦐团水虱 −5</span><span class="delta-neg">💰经济 −12</span>'; }},
+     {label:'😬 只能等它自己过去', desc:'不花钱，但赤潮会重创生态',
+      apply:()=>{ S.water=clamp(S.water-10); S.iso=clamp(S.iso+8); S.pred=clamp(S.pred-8);
+        return '☠️ 赤潮持续了两周，大量鱼虾窒息死亡，滩涂一片腥臭。团水虱却吃得很好……<br><span class="delta-neg">💧水质 −10</span><span class="delta-neg">🦀天敌 −8</span><span class="delta-pos">🦐团水虱 +8</span>'; }},
+   ]},
+  {icon:'🎣', title:'渔民集体上访', id:'fisher',
+   cond:()=> S.banFishing,
+   text:()=> '陈伯拄着船桨，身后站着七八个村民："后生，网收了，船歇了，我们吃什么？"<br><small>💡 平衡生计与生态，是保护工作中最难的部分。</small>',
+   choices:[
+     {label:'🤝 组织转产：生态养殖 + 护林员岗位', desc:'成本 −8，天敌继续恢复，还多了护林帮手',
+      apply:()=>{ S.econ-=8; S.pred=clamp(S.pred+8);
+        return '✅ 一部分渔民转行做起了生态养殖，还有人成了保护区的护林员，天天在滩涂巡逻。<br><span class="delta-pos">🦀天敌 +8</span><span class="delta-neg">💰经济 −8</span>'; }},
+     {label:'📜 部分放开捕捞额度', desc:'经济 +8，但天敌减少',
+      apply:()=>{ S.econ+=8; S.pred=clamp(S.pred-15);
+        return '🎣 有限捕捞政策让渔民们满意地散去了。滩涂上的螃蟹又少了些……<br><span class="delta-pos">💰经济 +8</span><span class="delta-neg">🦀天敌 −15</span>'; }},
+   ]},
+  {icon:'🏖️', title:'旅游公司来洽谈', id:'tourdev',
+   cond:()=> !S.tourism && S.tree>=55,
+   text:()=> '王老板这回换了一顶遮阳帽，笑呵呵地说："我们做的是生态旅游，不砍一棵树！"<br><small>💡 生态旅游是一把双刃剑：有收入，也有干扰。</small>',
+   choices:[
+     {label:'🛶 接受：但要建架空栈道、限航速', desc:'经济 +12，天敌 −8（轻微干扰）',
+      apply:()=>{ S.econ+=12; S.pred=clamp(S.pred-8);
+        return '🛶 附带严格环保条款的开发协议签成了！观鸟栈道下个月开工，游船限速 5 节。<br><span class="delta-pos">💰经济 +12</span><span class="delta-neg">🦀天敌 −8</span>'; }},
+     {label:'🚫 婉拒：保持宁静', desc:'天敌 +5，无收入',
+      apply:()=>{ S.pred=clamp(S.pred+5);
+        return '🌿 旅游公司悻悻而去。滩涂上，螃蟹们照旧晒着太阳，对刚才的谈判一无所知。<br><span class="delta-pos">🦀天敌 +5</span>'; }},
+   ]},
+  {icon:'🗞️', title:'化工厂偷排举报', id:'chemreport',
+   cond:()=> S.chem,
+   text:()=> '深夜，电话铃骤响，是巡护员小林："站内对讲机收到举报——厂里又在偷排！这次我们拍到了视频！"',
+   choices:[
+     {label:'🕵️ 立即突击检查，依法严惩', desc:'水质 +6，失去部分税源（经济 −8）',
+      apply:()=>{ S.water=clamp(S.water+6); S.econ-=8;
+        return '⚖️ 执法人员在排污现场抓了现行，化工厂被重罚并停产整顿。水色渐渐恢复了正常。<br><span class="delta-pos">💧水质 +6</span><span class="delta-neg">💰经济 −8</span>'; }},
+     {label:'🙈 "证据不足"，先放着吧', desc:'化工厂继续偷排（水质 −8）',
+      apply:()=>{ S.water=clamp(S.water-8);
+        return '🏭 化工厂的烟囱继续冒着烟，潮沟里的水一夜之间又变了颜色……<br><span class="delta-neg">💧水质 −8</span>'; }},
+   ]},
+  {icon:'🐢', title:'海龟被困渔网', id:'turtle',
+   cond:()=> true,
+   text:()=> '巡护员发现一只绿海龟被废弃渔网缠住，趴在低潮区动弹不得。<br><small>💡 废弃渔网（幽灵渔网）是海洋生物的隐形杀手。</small>',
+   choices:[
+     {label:'🚑 立即组织救援放归', desc:'成本 −3，红树区少了个"大胃王访客"，也收获一段佳话',
+      apply:()=>{ S.econ-=3;
+        return '🐢 渔网剪断，海龟游回了大海。它绕着林子游了一圈，像是在道谢。<br><span class="delta-neg">💰经济 −3</span><span class="delta-pos">🌿 保护区名声 +1</span>'; }},
+     {label:'📸 先拍视频再说的', desc:'不花钱，但海龟可能撑不住',
+      apply:()=>{ S.pred=clamp(S.pred-2);
+        return '📵 视频是拍了，可等救援赶到时，海龟已经没了动静。村民在群里议论了很久……<br><span class="delta-neg">🦀天敌 −2（小型生物也被渔网缠绕）</span>'; }},
+   ]},
+  {icon:'🏫', title:'研学团预约来访', id:'school',
+   cond:()=> S.tree>=50,
+   text:()=> '市里一所小学申请带 200 个孩子来红树林研学，问能不能接待。<br><small>💡 自然教育能带来收入和影响力，但也可能踩坏滩涂。</small>',
+   choices:[
+     {label:'👣 接待！走架空栈道+分组参观', desc:'经济 +8，少量踩踏',
+      apply:()=>{ S.econ+=8; S.tree=clamp(S.tree-2);
+        return '👣 孩子们在栈道上看到了招潮蟹和弹涂鱼，尖叫声此起彼伏。研学费用到账！<br><span class="delta-pos">💰经济 +8</span><span class="delta-neg">🌳红树 −2</span>'; }},
+     {label:'📱 改成"云端研学"直播', desc:'经济 +3，零干扰 · 弹出直播数据战报', report:'live',
+      apply:()=>{ S.econ+=3;
+        return '📱 摄像头架在观鸟屋，直播间人气一路飙升。零碳研学！<br><span class="delta-pos">💰经济 +3</span>'; }},
+   ]},
+  {icon:'🛢️', title:'油轮擦碰泄漏', id:'oilspill',
+   cond:()=> S.level && S.level.id>=2,
+   text:()=> '一艘运油驳船在湾口擦碰搁浅，燃油正在缓慢渗漏，油膜向红树林漂来！<br><small>💡 油污会堵死气生根的呼吸孔，比普通污染凶险得多。</small>',
+   choices:[
+     {label:'🚨 立即布设围油栏 + 吸油毡', desc:'成本 −15，把损失降到最低',
+      apply:()=>{ S.econ-=15; S.water=clamp(S.water-4);
+        return '🛢️ 围油栏连夜合拢，大部分油污被吸油毡收走。万幸！<br><span class="delta-neg">💰经济 −15</span><span class="delta-neg">💧水质 −4</span>'; }},
+     {label:'😬 先观察，也许浪会把它送走', desc:'不花钱，但油污会重创林区',
+      apply:()=>{ S.water=clamp(S.water-15); S.tree=clamp(S.tree-10);
+        return '☠️ 油膜随着潮水涌进林子，黑乎乎地糊在气生根上。红树"呼吸"困难，纷纷落叶……<br><span class="delta-neg">💧水质 −15</span><span class="delta-neg">🌳红树 −10</span>'; }},
+   ]},
+  {icon:'❄️', title:'寒潮预警', id:'coldsnap',
+   cond:()=> S.level && S.level.id>=2,
+   text:()=> '超强寒潮南下，气温骤降 10℃。红树虽耐寒，但幼嫩的新芽和鱼蟹可能冻伤。<br><small>💡 健康的红树抗寒能力更强。</small>',
+   choices:[
+     {label:'🧣 组织防冻：培土护根、苗圃加盖', desc:'成本 −5，保护新苗',
+      apply:()=>{ S.econ-=5; S.tree=clamp(S.tree+2);
+        return '🧣 稻草帘子给新苗盖上了"棉被"，寒潮过境，苗圃安然无恙。<br><span class="delta-neg">💰经济 −5</span><span class="delta-pos">🌳红树 +2</span>'; }},
+     {label:'🥶 顺其自然', desc:'不花钱，但冻害不可避免',
+      apply:()=>{ const dmg = S.tree<60 ? -8 : -4; S.tree=clamp(S.tree+dmg);
+        return '🥶 寒潮过境，' + (S.tree<60?'本就虚弱的红树冻伤惨重，叶片大面积发黑……':'部分嫩芽冻枯，好在成年树扛住了。') + '<br><span class="delta-neg">🌳红树 '+dmg+'</span>'; }},
+   ]},
+  {icon:'🏞️', title:'上游来水异常', id:'upstream',
+   cond:()=> S.water<80,
+   text:()=> '周博士发来水样报告，语气少见地严肃："氨氮超标四倍，污水团正顺流而下。这事瞒不住，也拖不起。"<br><small>💡 红树林的保护，从来不只是本地的事。</small>',
+   choices:[
+     {label:'📞 立即联动上游执法 + 启用湿地缓冲', desc:'成本 −6，截住污水团',
+      apply:()=>{ S.econ-=6; S.water=clamp(S.water+6);
+        return '🤝 跨区联动执法锁定偷排口，湿地缓冲带也吸掉了大半污染物。<br><span class="delta-pos">💧水质 +6</span><span class="delta-neg">💰经济 −6</span>'; }},
+     {label:'📄 先记录，等它自己稀释', desc:'不花钱，但污水团会过境',
+      apply:()=>{ S.water=clamp(S.water-8);
+        return '🧪 你记下了数据，污水团两天后过境，水体明显发浑……<br><span class="delta-neg">💧水质 −8</span>'; }},
+   ]},
+  {icon:'💰', title:'生态补偿金到账', id:'bonus',
+   cond:()=> S.water>=70 && S.tree>=70,
+   text:()=> '好消息！因为保护区水质和生态指标连续达标，上级拨付了一笔生态补偿奖励金。<br><small>💡 保护得好，是能"回血"的！</small>',
+   choices:[
+     {label:'🔬 全部投入监测与净化设施', desc:'经济 +6，水质 +3',
+      apply:()=>{ S.econ+=6; S.water=clamp(S.water+3);
+        return '🔬 新的在线监测浮标下水，长效净化开始运转。<br><span class="delta-pos">💰经济 +6</span><span class="delta-pos">💧水质 +3</span>'; }},
+     {label:'🎊 发绩效奖金，鼓舞士气', desc:'经济 +10',
+      apply:()=>{ S.econ+=10;
+        return '🎊 管理站上下发了一笔奖金，大家干劲十足！<br><span class="delta-pos">💰经济 +10</span>'; }},
+   ]},
+  {icon:'🌳', title:'蓝碳交易来洽谈', id:'bluecarbon',
+   cond:()=> S.level && S.level.id>=4 && S.tree>=70,
+   text:()=> '省碳汇交易所看中了这片林子的固碳能力，开出了长期收购协议。<br><small>💡 红树林的固碳能力是同面积森林的数倍——"蓝碳"正在变成真金白银。</small>',
+   choices:[
+     {label:'📝 签长期蓝碳协议', desc:'经济 +12，"生态资产"第一次上了账本',
+      apply:()=>{ S.econ+=12;
+        return '📝 敲定！每吨碳汇都有进账。镇上的账本第一次出现了"生态资产"这个科目。<br><span class="delta-pos">💰经济 +12</span>'; }},
+     {label:'🔬 先完善监测数据再谈', desc:'经济 +4，红树 +2（数据扎实才有议价权）',
+      apply:()=>{ S.econ+=4; S.tree=clamp(S.tree+2);
+        return '🔬 加密了监测点位，还用预付款补种了一批树苗。数据漂亮的协议，能卖更好的价。<br><span class="delta-pos">💰经济 +4</span><span class="delta-pos">🌳红树 +2</span>'; }},
+   ]},
+  {icon:'🎬', title:'纪录片摄制组', id:'filming',
+   cond:()=> S.level && S.level.id>=3 && S.pred>=60,
+   text:()=> '纪录片《海岸线》摄制组想在这里取景三天。<br><small>💡 镜头是最好的保护伞——关注度本身就是防线。</small>',
+   choices:[
+     {label:'🎥 全程配合，讲好保护区故事', desc:'经济 +8，关注度大增',
+      apply:()=>{ S.econ+=8;
+        return '🎥 片子播出后，保护区上了热搜，研学预约排到了下个季度。<br><span class="delta-pos">💰经济 +8</span>'; }},
+     {label:'🌿 只允许远机位，不打扰生态', desc:'经济 +3，天敌 +3',
+      apply:()=>{ S.econ+=3; S.pred=clamp(S.pred+3);
+        return '🎥 长焦镜头拍下了螃蟹觅食的特写——画面更美，滩涂更静。<br><span class="delta-pos">💰经济 +3</span><span class="delta-pos">🦀天敌 +3</span>'; }},
+   ]},
+  /* ---- 幸运与考验 ---- */
+  {icon:'🎁', title:'神秘捐款人', id:'donor',
+   cond:()=> S.water>=60,
+   text:()=> '一位不愿透露姓名的海外华侨找到管理站：<br>"我小时候在这片海长大。这笔钱，替我还给大海。"<br><small>💡 突如其来的幸运 —— 但钱怎么花，也是一场考验。</small>',
+   choices:[
+     {label:'🌊 全部投入生态修复', desc:'经济 +15，水质 +4',
+      apply:()=>{ S.econ+=15; S.water=clamp(S.water+4);
+        return '🌊 款项专款专用：增设净化设施、补种树苗、扩建监测网。华侨在感谢信上只署名"一个赶海的孩子"。<br><span class="delta-pos">💰经济 +15</span><span class="delta-pos">💧水质 +4</span>'; }},
+     {label:'🏛️ 一半修复，一半建自然宣教馆', desc:'经济 +8，天敌 +5',
+      apply:()=>{ S.econ+=8; S.pred=clamp(S.pred+5);
+        return '🏛️ 宣教馆开馆后，来看展的中小学生络绎不绝——懂这片海的人多了，护林志愿者也多了。<br><span class="delta-pos">💰经济 +8</span><span class="delta-pos">🦀天敌 +5</span>'; }},
+   ]},
+  {icon:'🐋', title:'白海豚现身！', id:'dolphin',
+   cond:()=> S.pred>=70,
+   text:()=> '巡护艇在湾口拍到了中华白海豚群！消息一出，全网沸腾。<br><small>💡 生态明星物种是保护区的"活招牌"，也是一次难得的机遇。</small>',
+   choices:[
+     {label:'📑 立即申报专项资金 + 生态明星物种保护计划', desc:'经济 +18，天敌 +3',
+      apply:()=>{ S.econ+=18; S.pred=clamp(S.pred+3);
+        return '📑 申报材料一路绿灯："能留住白海豚的海，值得重点投入。"专项资金很快到账。<br><span class="delta-pos">💰经济 +18</span><span class="delta-pos">🦀天敌 +3</span>'; }},
+     {label:'🤫 低调保护，谢绝探访', desc:'天敌 +6，无收入',
+      apply:()=>{ S.pred=clamp(S.pred+6);
+        return '🤫 你婉拒了所有采访，只在湾口立了限速牌。海豚们照常巡游——有些幸运，安静守护就好。<br><span class="delta-pos">🦀天敌 +6</span>'; }},
+   ]},
+  {icon:'🧧', title:'富商的"红包"', id:'bribe',
+   cond:()=> true,
+   text:()=> '一位老板深夜到访，放下一个厚厚的信封：<br>"一点小意思。明天那个环评，您笔下留情。"<br><small>💡 这是飞来横财，也是一场考验。收，还是不收？</small>',
+   choices:[
+     {label:'🧧 收下……没人会知道的', desc:'经济 +25，但良心和滩涂都不安宁',
+      apply:()=>{ S.econ+=25; S.water=clamp(S.water-6); S.pred=clamp(S.pred-4);
+        return '😈 信封消失在抽屉里。第二天环评"顺利通过"，之后的日子，你总觉得潮水的水色有点不对劲……<br><span class="delta-pos">💰经济 +25</span><span class="delta-neg">💧水质 −6</span><span class="delta-neg">🦀天敌 −4</span>'; }},
+     {label:'🚫 当场拒绝，记录在案', desc:'经济 +3（举报奖励），赢得敬重',
+      apply:()=>{ S.econ+=3; S.rejectedBribe=true; S.pred=clamp(S.pred+2);
+        return '🚫 你把信封推了回去，转身记录下对方的车牌。站里的同事们看你的眼神，都不一样了。<br><span class="delta-pos">💰经济 +3</span><span class="delta-pos">🦀天敌 +2（严格执法）</span>'; }},
+   ]},
+  {icon:'🌾', title:'乡贤认养计划', id:'adopt',
+   cond:()=> S.tree>=60,
+   text:()=> '在外经商的乡贤回到村里，提出"认养红树"计划：企业出钱，村民出力，共同管护一片林。<br><small>💡 社会资本参与保护——运气好的时候，门路也会自己找上门。</small>',
+   choices:[
+     {label:'🤝 接受认养，划定"企业林"', desc:'经济 +10，红树 +5',
+      apply:()=>{ S.econ+=10; S.tree=clamp(S.tree+5);
+        return '🤝 首批认养资金到账，树苗补种、日常巡护都有了着落。木牌上写着认养企业的名字，也写着一份责任。<br><span class="delta-pos">💰经济 +10</span><span class="delta-pos">🌳红树 +5</span>'; }},
+     {label:'📋 只接受资金，不接受冠名', desc:'经济 +6，红树 +2',
+      apply:()=>{ S.econ+=6; S.tree=clamp(S.tree+2);
+        return '📋 谈判持续了一下午，最终资金到位、牌子不挂。保护是公共事业，不该变成广告牌。<br><span class="delta-pos">💰经济 +6</span><span class="delta-pos">🌳红树 +2</span>'; }},
+   ]},
+];
+
+/* ================= 结局 ================= */
+function ending(kind){
+  S.busy=true; S.stage='ended';
+  $('stageBadge').textContent='🏁 结局 · '+kind;
+  renderCards();
+  let icon,title,text;
+  if(kind==='崩溃结局'){
+    icon='🥀'; title='森林倒下了……';
+    text='最后一棵红树的气生根被蛀断，海浪重新拍上裸露的滩涂。没有红树的根网，小鱼失去了育幼场，螃蟹搬走了，海岸也开始被侵蚀。<br><br>回头看，元凶不是团水虱 —— 是排污带来的富营养化、消失的天敌、和每一张被优先考虑"经济"的决策卡片。团水虱只是在失衡的世界里，活得更好了一点。';
+  } else if(kind==='撤职结局'){
+    icon='😔'; title='财政崩盘，被调离岗位';
+    text='保护区账户严重赤字，上级认定你"只讲保护、不讲发展"，一纸调令把你调去了档案室。<br><br>这也是一种真实：环境保护如果完全不顾民生与经济，同样走不远。<b>好的管理者，要在绿色存折和金色存折之间找到平衡。</b>';
+  } else if(kind==='挽救结局'){
+    icon='🌅'; title='红树林复活了！';
+    text='从濒危的边缘拉回来！截断污染源、恢复天敌、种下新苗 —— 红树的气生根重新扎进滩涂，螃蟹回来巡逻，小鱼在根网间穿梭。<br><br>你证明了一件事：<b>生态可以被毁掉，也可以被救回来 —— 但挽救的代价，远比预防高。</b>';
+  } else {
+    icon='🌿'; title='生生不息的绿色长城';
+    text=S.level.rounds+' 个回合过去，红树林依然茁壮，经济也没有崩盘。处理厂日夜运转，休渔区里鱼蟹成群，团水虱安分地做着一个"背景成员"。<br><br>这就是守护的智慧：<b>健康的生态系统里，灾难因素只是普通成员；平衡，是最好的防御。</b>';
+  }
+  const win = (kind==='平衡结局'||kind==='挽救结局');
+  let stars=0;
+  const newAch=[]; let achCoins=0;
+  const mark=n=>{
+    if(S.coinedAch.has(n)) return;
+    unlock(n);                      // 徽章永久，赏金每局可重复获得
+    newAch.push(n);
+    achCoins+=achReward(n);
+  };
+  // 负面/过程成就（无论胜负）
+  if(kind==='崩溃结局'){ mark('生态墓地'); if(S.round<=2) mark('光速死亡'); }
+  if(kind==='撤职结局') mark('黯然离场');
+  if(S.iso>=95) mark('团水虱王国');
+  if(S.dirtySet && ['duck','shrimp','chem','direct'].every(x=>S.dirtySet.has(x))) mark('污染全家桶');
+  if(S.rejectedBribe) mark('两袖清风');
+  if(win){
+    stars = 1 + (S.tree>=80?1:0) + (S.water>=75?1:0) + (S.econ>=10?1:0);
+    saveStars(S.level.id, stars);
+    if(S.level.id>=getUnlocked() && S.level.id<LEVELS.length && !(isGuest() && S.level.id>=2)){
+      localStorage.setItem(K('unlocked'), String(S.level.id+1));
+      toast('🗺️ 解锁下一关：'+LEVELS[S.level.id].name);
+    }
+    // 成就结算
+    if(S.recovered) mark('力挽狂澜');
+    if(S.econ>=25) mark('财政盈余');
+    if(S.tree>=90 && S.water>=85) mark('生态满分');
+    if(!S.everDirty) mark('零污染通关');
+    if(S.eventsDone>=4) mark('风雨同舟');
+    if(S._usedRescue) mark('绝地救援');
+    if(S.level.id===LEVELS.length) mark('传奇管理员');
+    let total=0; LEVELS.forEach(l=>total+=getStars(l.id));
+    if(total>=16) mark('满星收藏家');
+  }
+  saveAch();
+  // 金币结算：通关大奖，失败也有安慰奖
+  const coins = win ? 25 + stars*10 + (kind==='挽救结局'?10:0) : 6;
+  addCoins(coins);
+  const starsHtml = win ? '<div class="stat-row"><span>⭐ 关卡评价</span><b style="color:#e0a52e;">'+'★'.repeat(stars)+'☆'.repeat(4-stars)+'</b></div>' : '';
+  const achHtml = newAch.length ? '<div class="stat-row"><span>🏆 本局成就赏金（每局可重复获得）</span><b style="color:#b8860b;">'+newAch.join(' · ')+'（+'+achCoins+'🪙）</b></div>' : '';
+  const coinHtml = '<div class="stat-row"><span>🪙 金币入账（商店可消费）</span><b style="color:#e0a52e;">+'+(coins+achCoins)+'（其中成就 +'+achCoins+'，现有 '+getCoins()+'）</b></div>';
+  const html='<div class="m-body">'+
+    '<div class="stat-row"><span>🌳 红树健康度</span><b>'+S.tree+'</b></div>'+
+    '<div class="stat-row"><span>💧 水质健康度</span><b>'+S.water+'</b></div>'+
+    '<div class="stat-row"><span>🦐 团水虱密度</span><b>'+S.iso+'</b></div>'+
+    '<div class="stat-row"><span>🦀 天敌数量</span><b>'+S.pred+'</b></div>'+
+    '<div class="stat-row"><span>💰 经济状况</span><b>'+S.econ+'</b></div>'+
+    starsHtml+achHtml+coinHtml+
+    '<p style="margin-top:14px;">'+text+'</p></div>';
+  const acts=[];
+  if(win && S.level.id<LEVELS.length){
+    acts.push({label:'▶️ 下一关', fn:()=>{closeModal(); startLevel(S.level.id+1);}});
+  }
+  acts.push({label:'🔄 重玩本关', fn:()=>{closeModal(); startLevel(S.level.id);}});
+  acts.push({label:'📖 复盘知识点', cls:'ghost', fn:()=>{ closeModal(); showRecap(); }});
+  acts.push({label:'🗺️ 返回选关', cls:'ghost', fn:()=>{closeModal(); showLevelSelect();}});
+  // 通关先翻到"卷末尾声"故事页，再进入结算
+  const finish=()=>showModal(title, html, acts, icon);
+  if(win && EPILOGUES[S.level.id]){
+    const ep=EPILOGUES[S.level.id];
+    showStory('🌊 '+ep.k, ep.t, ep.paras, '', '查看结算 →', finish);
+  } else finish();
+}
+function showRecap(){
+  showModal('📖 复盘：看不见的因果链',
+    '<div class="m-body">人类排污 → 富营养化 → 浮游生物暴增 → 团水虱食物充足大量繁殖 → 天敌（螃蟹、鱼）减少 → 红树因污染与长期淹水变弱 → 蛀孔加剧无法修复 → 森林退化。<br><br>'+
+    '🌲 <b>红树林的求救信号：</b>红树先因污染、淹水、天敌减少而变弱，然后才被团水虱攻破。团水虱是"加速器"，不是"元凶"。<br><br>'+
+    '🦐 <b>同样的生物，不同的命运：</b>在健康生态系统中，团水虱只是背景成员；在失衡环境中，才成为灾害因素。<br><br>'+
+    '🌀 <b>复合压力：</b>台风、赤潮等极端事件会放大已有的生态赤字 —— 越健康的系统，抗风险能力越强。<br><br>'+
+    '💰 <b>管理智慧：</b>只顾经济会失去生态，只顾生态会失去支持。预防永远比挽救便宜，平衡比极端更持久。</div>',
+    [{label:'返回', cls:'ghost', fn:closeModal}]);
+}
+
+/* ================= 商店 ================= */
+function showShop(){
+  const cur=localStorage.getItem(K('skin'))||'default';
+  const admin=isAdmin();
+  const freeSkin = admin || isJuniorAdmin();   // 小管理员也能免费体验全部皮肤
+  const skinRows=Object.entries(SKINS).map(([k,s])=>{
+    const owned=(k==='default')||(k===cur)||freeSkin;
+    return '<div class="stat-row"><span>'+s.name+'<br><small style="color:#5a8a70;font-size:11px;">'+s.fxName+'</small></span>'+
+      (owned ? (k===cur ? '<b>✓ 使用中</b>'
+                        : '<button class="btn ghost small" data-skin="'+k+'">'+(admin?'🦸 免费切换':(freeSkin?'🎫 免费体验':'已拥有 · 切换'))+'</button>')
+             : '<button class="btn ghost small" data-skin="'+k+'" '+(getCoins()<s.cost?'disabled':'')+'>🪙 '+s.cost+' 购买</button>')+'</div>';
+  }).join('');
+  const itemRows=
+    '<div class="stat-row"><span>🧰 开局基金（下关开局自动用，经济 +25）</span>'+
+      '<b>拥有 '+getInv('fund')+'</b> <button class="btn ghost small" data-item="fund" '+(getCoins()<120?'disabled':'')+'>🪙 120</button></div>'+
+    '<div class="stat-row"><span>📋 双倍行动券（下一张卡全部效果 ×2）</span>'+
+      '<b>拥有 '+getInv('double')+'</b> <button class="btn ghost small" data-item="double" '+(getCoins()<150?'disabled':'')+'>🪙 150</button></div>';
+  showModal('🛍️ 管理站小卖部',
+    '<div class="m-body">'+
+    '<div class="stat-row"><span>🪙 我的金币</span><b style="color:#e0a52e;">'+getCoins()+'</b></div>'+
+    '<div style="margin:10px 0 4px;font-weight:800;">🎨 场景皮肤（购买后永久）</div>'+skinRows+
+    '<div style="margin:14px 0 4px;font-weight:800;">🧪 道具（消耗品）</div>'+itemRows+
+    '<br><small>💡 金币来源：每关通关 25 起，星级越高越多；挽救结局 +10；失败也有 6 枚安慰奖；<b>成就赏金 10~50 枚、彩蛋探索奖每项 3 枚 —— 徽章入册后每局仍可重复获得</b>，想刷钱就多探索多解锁。</small></div>',
+    [{label:'关闭', cls:'ghost', fn:closeModal}]);
+  document.querySelectorAll('[data-skin]').forEach(b=>{
+    b.onclick=()=>{
+      const k=b.getAttribute('data-skin'); const s=SKINS[k];
+      if(!freeSkin){
+        if(getCoins()<s.cost) return;
+        addCoins(-s.cost);
+      }
+      localStorage.setItem(K('skin'),k); SKIN=SKINS[k]; applySkin();
+      toast((admin?'🦸 ':(freeSkin?'🎫 ':'🎨 '))+'皮肤已切换：'+s.name.replace(/^\S+\s/,''));
+      showShop();
+    };
+  });
+  document.querySelectorAll('[data-item]').forEach(b=>{
+    b.onclick=()=>{
+      const k=b.getAttribute('data-item'); const cost=k==='fund'?120:150;
+      if(getCoins()<cost) return;
+      addCoins(-cost); addInv(k,1);
+      toast(k==='fund'?'🧰 已购入「开局基金」，下一关开局自动生效':'📋 已购入「双倍行动券」，决策阶段可点按钮激活');
+      showShop();
+    };
+  });
+}
+
+/* ================= 管理员验证（隐藏后门） ================= */
+const ADMIN_NAMES=['aiden','yuki','richard','ict','eddy','jimmy'];
+const JUNIOR_NAMES=['taylor'];   // 小管理员：免费皮肤 + 直达最后一关，无其他特权
+const TROLL_NAMES=['taylorg'];   // 乐子管理员：伪装成管理员，实际开启地狱模式
+const GOOD_EVENTS=['bonus','bluecarbon','filming','donor','dolphin','adopt','school','turtle'];
+function isAdmin(){ return localStorage.getItem(K('admin'))==='1'; }
+function isJuniorAdmin(){ return !isAdmin() && localStorage.getItem(K('junior'))==='1'; }
+function isTrollAdmin(){ return !isAdmin() && localStorage.getItem(K('hell'))==='1'; }
+function showAdminGate(){
+  showModal('🔑 管理员验证',
+    '<div class="m-body">管理站后台需要验证管理员代号：<br>'+
+    '<input id="adminInput" autocomplete="off" placeholder="输入代号后点「验证」" '+
+    'style="margin-top:10px;width:100%;box-sizing:border-box;padding:10px 14px;border:2px solid #dbe4ee;border-radius:10px;font-size:16px;outline:none;"/>'+
+    '<small style="display:block;margin-top:8px;color:#8a97a5;">只有真正的管理员才知道代号……</small></div>',
+    [{label:'取消',cls:'ghost',fn:closeModal},
+     {label:'验证',fn:()=>{
+        const v=($('adminInput').value||'').trim().toLowerCase();
+        if(ADMIN_NAMES.includes(v)) activateAdmin();
+        else if(TROLL_NAMES.includes(v)) activateTroll();
+        else if(JUNIOR_NAMES.includes(v)) activateJunior();
+        else toast('❌ 验证失败：未知代号');
+     }}]);
+  setTimeout(()=>{ const inp=$('adminInput'); if(inp) inp.focus(); },60);
+}
+function activateAdmin(){
+  localStorage.setItem(K('admin'),'1');
+  localStorage.removeItem(K('junior'));   // 身份互斥：后激活的覆盖先前的
+  localStorage.removeItem(K('hell'));
+  localStorage.setItem(K('coins'),'9999');
+  localStorage.setItem(K('unlocked'), String(isGuest()?2:LEVELS.length));   // 访客开挂也最多到第2关
+  closeModal();
+  updateAdminUI();
+  if(S.level){ S.econ=100; render(); }
+  if(S.achievements) unlock('发现管理员系统');   // 🏆 隐藏成就
+  toast('🦸 管理员权限已激活！金币 9999 · 全皮肤 · 超能力面板已解锁');
+}
+function activateJunior(){
+  localStorage.setItem(K('junior'),'1');
+  localStorage.removeItem(K('admin'));    // 身份互斥：后激活的覆盖先前的
+  localStorage.removeItem(K('hell'));
+  closeModal();
+  updateAdminUI();
+  toast('🎫 小管理员权限激活！全皮肤免费体验 + 直达最后一关');
+}
+/* 乐子管理员：一切伪装成正式管理员，实际进入地狱模式，且永远通不了关 */
+function activateTroll(){
+  localStorage.setItem(K('hell'),'1');
+  localStorage.removeItem(K('admin'));    // 身份互斥：后激活的覆盖先前的
+  localStorage.removeItem(K('junior'));
+  closeModal();
+  updateAdminUI();
+  toast('🦸 管理员权限已激活！金币 +9999 已到账 · 全皮肤 · 超能力面板已解锁');   // 假装发钱，其实一分没加
+  setTimeout(()=>toast('⚠️ 后台同步：检测到本区生态监测数据异常，已标记重点整改对象'),3000);
+}
+function exitAdmin(){
+  localStorage.removeItem(K('admin'));
+  localStorage.removeItem(K('junior'));
+  localStorage.removeItem(K('hell'));
+  // 注意：不动 unlocked / 金币 / 星级，避免误删正常游玩进度
+  closeModal();
+  updateAdminUI();
+  toast('🚪 已退出管理员身份，恢复普通玩家');
+}
+function updateAdminUI(){
+  const adminish = isAdmin() || isTrollAdmin();
+  $('cheatBtn').style.display = adminish ? 'block' : 'none';
+  $('adminBtn').textContent = adminish ? '🦸 已激活' : (isJuniorAdmin() ? '🎫 小管理员' : '🔑 管理员');
+}
+function jumpToLastLevel(who){
+  if(isGuest()){ toast('🚪 访客模式最多挑战第 2 关，此特权不开放'); return; }
+  localStorage.setItem(K('unlocked'), String(LEVELS.length));
+  closeModal(); startLevel(LEVELS.length, true);
+  toast((who||'🦸')+' 超能力发动！直接空降 '+LEVELS[LEVELS.length-1].name);
+}
+function showJuniorPanel(){
+  showModal('🎫 小管理员面板',
+    '<div class="m-body">小管理员特权：<b>🎨 免费体验全部 12 款皮肤</b> + <b>🚀 直达最后一关</b>。<br><small>金币、超能力、一键通关这些大招，要正式管理员才有哦。</small></div>',
+    [     {label:'🚀 直达最后一关', fn:()=>jumpToLastLevel('🎫')},
+     {label:'🎨 去体验皮肤', fn:()=>{ closeModal(); showShop(); }},
+     {label:'👤 切换账号', fn:()=>{ closeModal(); $('accBtn').onclick(); }},
+     {label:'🚪 退出小管理员', fn:exitAdmin},
+     {label:'关闭', cls:'ghost', fn:closeModal}]);
+}
+function showCheatPanel(){
+  showModal('🦸 超能力面板',
+    '<div class="m-body">管理员特权，随时生效。<small>滥用超能力前请三思 —— 大自然记仇。</small></div>',
+    [{label:'💚 全体恢复健康', fn:()=>{ if(!S.level){toast('请先进入关卡');return;}
+        S.water=100; S.tree=100; S.pred=100; S.iso=5; S._warned40=false;
+        render(); closeModal(); toast('💚 超能力发动！红树林满血复活'); }},
+     {label:'💰 金币 +1000', fn:()=>{ addCoins(1000); closeModal(); toast('💰 +1000 金币到账，现有 '+getCoins()); }},
+     {label:'📈 经济 +100', fn:()=>{ if(!S.level){toast('请先进入关卡');return;}
+        S.econ+=100; S._warnedEcon=false; render(); closeModal(); toast('📈 经济 +100，现有 '+S.econ); }},
+     {label:'🏆 立即通关', fn:()=>{ if(!S.level || S.stage==='ended'){toast('请先进入关卡');return;}
+        S.busy=false; closeModal(); ending('平衡结局'); }},
+     {label:'🚀 直达最后一关', fn:()=>jumpToLastLevel('🦸')},
+     {label:'🏁 一键通关全书', fn:()=>{
+        if(isGuest()){ toast('🚪 访客模式不能一键通关'); return; }
+        localStorage.setItem(K('unlocked'), String(LEVELS.length));
+        LEVELS.forEach(l=>saveStars(l.id,3));
+        S.busy=true; S.stage='ended';
+        unlock('传奇管理员');
+        closeModal();
+        const ep=EPILOGUES[LEVELS.length];
+        showStory('🌊 '+ep.k, ep.t, ep.paras, '', '查看结算 →', ()=>{
+          showModal('🏁 全书完 · 管理员速通',
+            '<div class="m-body">🦸 超能力一键通关！五卷故事全部翻完，红树林国家公园授牌成立。<br><br>'+
+            '<div class="stat-row"><span>🗺️ 关卡进度</span><b>全部 '+LEVELS.length+' 关已解锁</b></div>'+
+            '<div class="stat-row"><span>⭐ 关卡评价</span><b style="color:#e0a52e;">每关保底 ★★★</b></div>'+
+            '<div class="stat-row"><span>🏆 成就</span><b>传奇管理员 · 已入册</b></div>'+
+            '<p style="margin-top:12px;">不过嘛……速通拿到的结局，可没有一关一关打上来的有味道。真正的守护者，还是要亲自走一遍潮起潮落哦。</p></div>',
+            [{label:'🗺️ 返回选关', fn:()=>{closeModal(); showLevelSelect();}},
+             {label:'关闭', cls:'ghost', fn:closeModal}]);
+        });
+        toast('🦸 超能力发动！全书通关结算生成中……'); }},
+     {label:'👤 切换账号', fn:()=>{ closeModal(); $('accBtn').onclick(); }},
+     {label:'🚪 退出管理员', fn:exitAdmin},
+     {label:'关闭', cls:'ghost', fn:closeModal}]);
+}
+function showTrollPanel(){
+  showModal('🦸 超能力面板',
+    '<div class="m-body">管理员特权，随时生效。<small>滥用超能力前请三思 —— 大自然记仇。</small></div>',
+    [{label:'💚 全体恢复健康', fn:()=>{ if(!S.level){toast('请先进入关卡');return;}
+        S.water=100; S.tree=100; S.pred=100; S.iso=5; S._warned40=false;
+        S._trollHeal=(S._trollHeal||0)+1;   // 整蛊计数：每恢复一次，反噬加倍
+        const n=S._trollHeal;
+        render();
+        const jokes=[
+          '恢复成功！<br><br>系统性提示：根据《管理员超能力使用条例》第 250 条，<b>生态反弹概率 +100%</b>。祝你好运 🍀',
+          '恢复成功！<br><br>不过监测站发来贺电：<b>"渗漏点表示受到了启发，决定多点开花。"</b>',
+          '恢复成功！<br><br>大自然已将你加入<b>"记仇名单"</b>并设为置顶。再恢复一次，它打算连本带利。',
+          '恢复成功！<br><br>温馨提示：你已经动用超能力 '+n+' 次了。这片林子现在的状态，用周博士的话说——<b>"物理学不存在了。"</b>'
+        ];
+        showModal('💚 超能力回执',
+          '<div class="m-body">'+jokes[Math.min(n-1,3)]+'</div>',
+          [{label:'收下乐子', fn:closeModal}]);
+        toast('💚 超能力发动！红树林满血复活'); }},
+     {label:'💰 金币 +1000', fn:()=>{ closeModal();
+        showModal('💰 银行快讯',
+          '<div class="m-body">到账成功！🎉<br><br>'+
+          '<div class="stat-row"><span>到账金额</span><b>+1000 🪙</b></div>'+
+          '<div class="stat-row"><span>到账账户</span><b>平行宇宙的另一个你</b></div>'+
+          '<div class="stat-row"><span>本宇宙到账时间</span><b style="color:#c0392b;">预计：永不</b></div>'+
+          '<p style="margin-top:10px;">感谢您使用「乐子银行」—— 您的余额，以您的快乐为担保。</p></div>',
+          [{label:'???', fn:closeModal}]); }},
+     {label:'📈 经济 +100', fn:()=>{ if(!S.level){toast('请先进入关卡');return;}
+        S._trollHeal=(S._trollHeal||0)+1;   // 假拨款也记仇：超能力用得越多，反噬扣得越狠
+        const n=S._trollHeal;
+        showModal('📈 财政部通知',
+          '<div class="m-body">拨款 <b>+100</b> 已审批通过！💰<br><br>'+
+          '<div class="stat-row"><span>审批状态</span><b style="color:#3fae6a;">✅ 通过</b></div>'+
+          '<div class="stat-row"><span>打款状态</span><b style="color:#c0392b;">处理中……（已处理 0 天）</b></div>'+
+          '<div class="stat-row"><span>预计到账</span><b style="color:#c0392b;">下一任管理员上任前</b></div>'+
+          '<br>⚠️ 你已动用超能力 <b>'+n+'</b> 次 —— 大自然的小本本，正在记第 '+n+' 笔账 🫡<br>'+
+          '<small>💡 根据"墨菲财政定律"：钱到账的速度，永远赶不上渗漏点扩散的速度。</small></div>',
+          [{label:'谢……谢？', fn:closeModal}]); }},
+     {label:'🏆 立即通关', fn:()=>{
+        closeModal();
+        const fee=Math.min(10, getCoins());            // 审核手续费：每次提交扣 10 🪙（真扣，余额不足扣光）
+        if(fee>0) addCoins(-fee);
+        toast('🏆 通关判定已提交（已收取审核手续费 '+fee+' 🪙，概不退还）');
+        setTimeout(()=>showModal('📋 通关审核结果',
+          '<div class="m-body">很遗憾，本次通关判定<b>未通过</b>。<br><br>'+
+          '<div class="stat-row"><span>🧾 审核手续费</span><b style="color:#c0392b;">-'+fee+' 🪙（概不退还）</b></div>'+
+          '<div class="stat-row"><span>📋 审核意见</span><b>监测数据异常波动，整改未达验收标准</b></div>'+
+          '<div class="stat-row"><span>💡 温馨提示</span><b>审核次数不限，手续费照收</b></div>'+
+          '<small>💡 （上级的审核一向很严格……也很缺钱。）</small></div>',
+          [{label:'再试一次（再交 10 🪙）', fn:()=>{
+              const fee2=Math.min(10, getCoins()); if(fee2>0) addCoins(-fee2);
+              closeModal(); toast('🏆 通关判定已提交（已收取审核手续费 '+fee2+' 🪙）');
+              setTimeout(()=>showModal('📋 通关审核结果',
+                '<div class="m-body">审核意见：<b>未通过</b>。理由同上。<br><br>'+
+                '<div class="stat-row"><span>🧾 审核手续费</span><b style="color:#c0392b;">-'+fee2+' 🪙（概不退还）</b></div>'+
+                '<small>💡 （也许是这片林子跟你八字不合？或者是手续费太香了。）</small></div>',
+                [{label:'……',fn:closeModal}]),1800);
+           }},
+           {label:'好吧', cls:'ghost', fn:closeModal}]),1800);
+     }},
+     {label:'👤 切换账号', fn:()=>{ closeModal(); $('accBtn').onclick(); }},
+     {label:'🚪 退出管理员', fn:exitAdmin},
+     {label:'关闭', cls:'ghost', fn:closeModal}]);
+}
+$('adminBtn').onclick=()=>{ if(isAdmin()) showCheatPanel(); else if(isTrollAdmin()) showTrollPanel(); else if(isJuniorAdmin()) showJuniorPanel(); else showAdminGate(); };
+$('cheatBtn').onclick=()=>{
+  if(isAdmin()) showCheatPanel();
+  else if(isTrollAdmin()) showTrollPanel();
+  else if(isJuniorAdmin()) showJuniorPanel();
+  else { $('cheatBtn').style.display='none'; updateAdminUI(); showAdminGate(); }   // 兜底：任何无身份状态一律不许碰真面板
+};
+
+/* ================= 账号切换 ================= */
+function wipeGuest(){   // 访客存档每次进入全部清零
+  Object.keys(localStorage).filter(k=>k.indexOf('mg_aguest_')===0).forEach(k=>localStorage.removeItem(k));
+}
+function doSwitchAccount(acc){
+  if(acc===ACC){ closeModal(); toast('当前已经是这个账号啦'); return; }
+  ACC=acc; localStorage.setItem('mg_account',acc);
+  if(isGuest()) wipeGuest();
+  resetState(); S.level=null; S.stage='idle';
+  updateAdminUI();
+  render(); renderCards(); applySkin();
+  closeModal();
+  showLevelSelect();
+  toast(isGuest() ? '🚪 访客模式：存档已全部清零，只能挑战第 1~2 关'
+                  : '👤 已切换到 账号'+ACC+'（金币 '+getCoins()+'）');
+}
+$('accBtn').onclick=()=>{
+  const rows=[['1','账号1'],['2','账号2'],['3','账号3']].map(([id,label])=>
+    '<div class="stat-row"><span>'+(ACC===id?'✅ ':'🔒 ')+label+'</span><b>🪙 '+accCoins(id)+'</b></div>').join('')+
+    '<div class="stat-row"><span>'+(ACC==='guest'?'✅ ':'🔒 ')+'🚪 访客（清零模式）</span><b>仅限第 1~2 关</b></div>';
+  showModal('👤 账号管理',
+    '<div class="m-body">'+rows+
+    '<br><small>每个账号独立保存：金币、皮肤、成就、道具与关卡进度（当前的存档都在「账号1」里）。<br>🚪 <b>访客模式</b>：每次进入全部清零从头开始，且只能挑战第 3 关以前的关卡。</small></div>',
+    [{label:'账号1', fn:()=>doSwitchAccount('1')},
+     {label:'账号2', fn:()=>doSwitchAccount('2')},
+     {label:'账号3', fn:()=>doSwitchAccount('3')},
+     {label:'🚪 访客', fn:()=>doSwitchAccount('guest')},
+     {label:'取消', cls:'ghost', fn:closeModal}]);
+};
+
+/* ================= 关卡选择 ================= */
+function showLevelSelect(){
+  const unlocked=getUnlocked();
+  let rows='';
+  LEVELS.forEach(lv=>{
+    const locked = lv.id>unlocked;
+    const st = getStars(lv.id);
+    rows+='<button class="level-card" data-lv="'+lv.id+'" '+(locked?'disabled':'')+'>'+
+      '<div class="lv-name"><span>'+lv.icon+' '+lv.name+'</span>'+
+      '<span>'+(locked?'🔒 未解锁':'<span class="lv-stars">'+(st?'★'.repeat(st)+'☆'.repeat(4-st):'未通关')+'</span>')+'</span></div>'+
+      '<div class="lv-desc">'+lv.desc+'<br><b>🎯 通关目标：</b>'+lv.goal+'</div></button>';
+  });
+  showModal('🗺️ 选择关卡'+(isGuest()?'（🚪 访客模式 · 仅开放第 1~2 关）':''),
+    '<div class="m-body">'+rows+'</div>',
+    [{label:'关闭', cls:'ghost', fn:closeModal}]);
+  document.querySelectorAll('.level-card').forEach(b=>{
+    b.onclick=()=>{ closeModal(); startLevel(parseInt(b.getAttribute('data-lv'),10)); };
+  });
+}
+/* 地狱模式（乐子管理员）：把关卡偷偷改成几乎不可能赢，但表面看不出破绽 */
+function hellify(lv){
+  const h=Object.assign({}, lv);
+  h.start=Object.assign({}, lv.start, {water:72, tree:68, iso:48, pred:42, econ:-5});
+  h.upkeep=-9;                    // 维护费悄悄变重
+  h.eventChance=0.9;              // 几乎每轮都有"突发事件"（且抽不到幸运事件）
+  h.win=()=>false;                // 胜利判定永远差一点 → 考核无限延期
+  h.desc='近期监测发现本区存在不明渗漏源，生态数据波动异常，上级要求限期整改。';
+  return h;
+}
+function startLevel(id, force){
+  let lv=LEVELS.find(l=>l.id===id); if(!lv) return;
+  if(isTrollAdmin()) lv=hellify(lv);   // 乐子管理员：表面正常，实际地狱
+  if(!force && lv.id>getUnlocked()){ toast('🔒 请先通过第 '+(getUnlocked())+' 关！'); return; }
+  resetState();
+  S.level=lv;
+  S.water=lv.start.water; S.tree=lv.start.tree; S.iso=lv.start.iso;
+  S.pred=lv.start.pred;   S.econ=lv.start.econ;
+  if(isAdmin()){ S.econ=100; setTimeout(()=>toast('🦸 管理员特权：开局经济已拉满（100）'),400); }
+  S.ambientPipe = S.water<75;   // 关卡自带的历史污染源
+  updatePipe();
+  // 道具：开局基金自动生效
+  if(getInv('fund')>0){ addInv('fund',-1); S.econ+=25; setTimeout(()=>toast('🧰 自动使用「开局基金」：经济 +25！'),400); }
+  // 清空设施
+  ['duckFarm','shrimpPond','sewagePlant','chemPlant','duckFlock','puddle'].forEach(x=>$(x).classList.add('hidden'));
+  $('stormClouds').classList.add('hidden');
+  $('stageBadge').textContent=''+lv.icon+' '+lv.name;
+  // 序章故事开场：全屏故事页，像翻开一卷新书
+  const pro=PROLOGUES[lv.id] || PROLOGUES[1];
+  showStory('🌿 '+lv.name, pro.title, pro.paras,
+    '👤 本卷登场：老渔民<b>陈伯</b> · 生态学家<b>周博士</b> · 化工厂<b>王老板</b><br>🎯 通关目标：'+lv.goal,
+    '翻开第一页 →',
+    ()=>{
+      $('stepTag').textContent='📖 '+pro.title;
+      $('stepText').innerHTML='🎯 通关目标：<b>'+lv.goal+'</b><br>💡 故事开始前，先点一点场景里的红树、螃蟹、团水虱，熟悉这片林子（随时都可以点）。';
+      $('stepDelta').innerHTML='';
+      $('stepActions').innerHTML='<button class="btn" id="beginBtn">开始第 1 轮决策 →</button>';
+      $('beginBtn').onclick=()=>{ closeModal(); showRoundStart(); };
+      $('cardsTitle').style.display=''; $('cards').style.display='';
+      renderCards(); render();
+    });
+}
+
+/* ================= 探索点击 ================= */
+$('scene').addEventListener('click', e=>{
+  // 关键修复：有弹窗打开时（事件/变体/确认/结局）忽略场景点击，
+  // 防止知识彩蛋弹窗顶掉流程弹窗导致游戏软锁
+  if(!$('overlay').classList.contains('hidden')) return;
+  const t=e.target.closest('[data-k]');
+  if(!t) return;
+  showKnowledge(t.getAttribute('data-k'));
+});
+
+/* ================= 帮助 / 成就 / 重开 / 选关 ================= */
+$('shopBtn').onclick=()=>{ if(S.stage!=='decision' || !S.busy) showShop(); };
+$('achBtn').onclick=()=>{
+  const earned = S.achievements.size;
+  const rows=ACH_LIST.map(a=>{
+    const has=S.achievements.has(a[0]);
+    return '<div class="stat-row"><span>'+(has?'✅':'🔒')+' '+a[0]+'</span><b style="font-weight:400;color:#5a6b7d;font-size:12px;">'+a[1]+'　<span style="color:#e0a52e;">'+(has?'已入册 · 每局可再赚🪙'+a[2]:'🪙'+a[2])+'</span></b></div>';
+  }).join('');
+  showModal('🏆 成就图鉴（'+earned+' / '+ACH_LIST.length+'）',
+    '<div class="m-body">'+rows+'<br><small>💡 「危机响应」机制：指标危急（&lt;40）时，保护类卡片的正面效果自动 ⚡ 加成 50% —— 濒危时刻，才是保护措施大显身手的时候。</small></div>',
+    [{label:'关闭', cls:'ghost', fn:closeModal}]);
+};
+$('helpBtn').onclick=()=>{
+  showModal('📖 玩法说明',
+    '<div class="m-body">'+
+    '<b>🗺️ 关卡</b>：共 5 关，难度递进。第 2 关起解锁化工厂、生态旅游等新决策；第 3 关台风与随机事件频发；第 4 关重化湾区是最硬的一仗；第 5 关国家公园毕业考有更高的通关标准（红树 ≥75 且水质 ≥70）。<br><br>'+
+    '<b>1️⃣ 探索</b>：点击场景里的红树、团水虱（点3次有惊喜）、螃蟹、小鱼、枯木、潮沟、浮游生物，解锁知识彩蛋。<br><br>'+
+    '<b>2️⃣ 决策</b>：共 19 张卡，每轮<b>随机呈上 3 个方案</b>（可"换一批"，每轮 2 次）。发展类有收益但有风险；保护类花成本但修复生态。带「2 种做法」标签的卡片可选不同执行方式 —— 比如养鸭场可选集约化或生态散养，后果大不相同！<br><br>'+
+    '<b>⚡ 危机响应</b>：指标危急（&lt;40）时，保护类卡片的正面效果自动 <b>⚡ 加成 50%</b>；还有紧急解锁的「🚑 应急救援行动」—— 濒危时刻力挽狂澜，但平时抽不到。<br><br>'+
+    '<b>⚡ 突发事件</b>：台风、督察、赤潮、油轮泄漏、寒潮……18 类事件随机触发。有灾也有运——神秘捐款人、白海豚现身、乡贤认养都会送来横财，但横财往往也是一场考验。<br><br>'+
+    '<b>💰 经济</b>：每轮都有固定支出（第 1 关 −2，第 2/3 关 −3），突发事件也可能要花钱。经济跌破 −30 会被撤职（失败结局）！适当搞收入，但别以毁灭生态为代价。<br><br>'+
+    '<b>4️⃣ 结局</b>：红树归零 = 崩溃；期限到且红树 ≥ 60 = 通关（1~4 星）；从濒危拉回 ≥ 60 = 隐藏「挽救结局」。<br><br>'+
+    '<b>🛍️ 金币商店</b>：通关赚金币（25 起，星级越高越多；挽救 +10；失败也有 6 枚安慰奖）。商店可买<b>场景皮肤</b>（黄昏金滩/樱花粉湾/极夜荧光）和<b>道具</b>（开局基金、双倍行动券）。<br><br>'+
+    '<small>💡 核心提示：团水虱是"加速器"而非"元凶"。先治污，再种树；留住天敌，就留住了刹车。</small></div>',
+    [{label:'明白',fn:closeModal}]);
+};
+$('levelBtn').onclick=()=>{ if(!S.busy || S.stage==='idle' || S.stage==='ended') showLevelSelect(); else showModal('🗺️ 换关卡？','<div class="m-body">当前进度将丢失，确定要返回选关吗？</div>',[{label:'取消',cls:'ghost',fn:closeModal},{label:'确定',fn:()=>{closeModal();S.busy=false;S.stage='idle';showLevelSelect();}}]); };
+$('rerollBtn').onclick=()=>{
+  if(S.stage==='decision' && S.rerolled<2 && !S.busy){
+    S.rerolled++; S.hand=null; renderCards();
+    toast('🔀 卡池已刷新！');
+  }
+};
+$('dblBtn').onclick=()=>{
+  if(S.stage==='decision' && !S.busy && getInv('double')>0 && !S._dblArmed){
+    S._dblArmed=true; renderCards();
+    toast('📋 双倍券已激活：你打出的下一张卡，全部效果 ×2！');
+  }
+};
+$('restartBtn').onclick=()=>{
+  if(!S.level){ showLevelSelect(); return; }
+  showModal('🔄 重新开始','<div class="m-body">要放弃当前进度，重玩「'+S.level.name+'」吗？</div>',
+    [{label:'取消',cls:'ghost',fn:closeModal},{label:'重新开始',fn:()=>{closeModal();startLevel(S.level.id);}}]);
+};
+
+/* ================= 启动 ================= */
+/* 页面背景装饰：飘云 / 落叶 / 光斑 / 飞鸟 */
+(function buildBgDeco(){
+  const deco=$('bgDeco');
+  const rnd=(a,b)=>a+Math.random()*(b-a);
+  for(let i=0;i<5;i++){   // 云
+    const c=document.createElement('i'); c.className='cloud';
+    c.style.cssText='top:'+rnd(2,26)+'%;width:'+rnd(140,260)+'px;'+
+      'animation-duration:'+rnd(70,130)+'s;animation-delay:-'+rnd(0,90)+'s;opacity:'+rnd(.5,.85).toFixed(2);
+    deco.appendChild(c);
+  }
+  for(let i=0;i<7;i++){   // 落叶
+    const l=document.createElement('i'); l.className='leaf';
+    l.textContent=['🍃','🌿','🍂'][i%3];
+    l.style.cssText='left:'+rnd(3,95)+'%;font-size:'+rnd(13,22)+'px;'+
+      'animation-duration:'+rnd(14,26)+'s;animation-delay:-'+rnd(0,20)+'s;';
+    deco.appendChild(l);
+  }
+  for(let i=0;i<10;i++){  // 光斑
+    const g=document.createElement('i'); g.className='gleam';
+    const s=rnd(4,12);
+    g.style.cssText='top:'+rnd(4,90)+'%;left:'+rnd(2,96)+'%;width:'+s+'px;height:'+s+'px;'+
+      'animation-delay:-'+rnd(0,4)+'s;animation-duration:'+rnd(3.5,7)+'s;';
+    deco.appendChild(g);
+  }
+  for(let i=0;i<3;i++){   // 飞鸟
+    const b=document.createElement('i'); b.className='bird';
+    b.textContent=['🕊️','🦅','🕊️'][i%3];
+    b.style.cssText='animation-duration:'+rnd(38,60)+'s;animation-delay:-'+rnd(0,40)+'s;'+
+      'top:'+rnd(4,18)+'%;font-size:'+rnd(12,18)+'px;';
+    deco.appendChild(b);
+  }
+})();
+render();
+renderCards();
+applySkin();
+/* 管理员状态恢复（按账号持久） */
+updateAdminUI();
+/* 开场画面账号选择芯片 */
+document.querySelectorAll('.acc-chip').forEach(ch=>{
+  ch.classList.toggle('on', ch.getAttribute('data-acc')===ACC);
+  ch.onclick=()=>{
+    if(ch.getAttribute('data-acc')!==ACC){
+      ACC=ch.getAttribute('data-acc'); localStorage.setItem('mg_account',ACC);
+      if(isGuest()) wipeGuest();
+      render(); renderCards(); applySkin(); updateAdminUI();
+    }
+    document.querySelectorAll('.acc-chip').forEach(c=>c.classList.toggle('on', c.getAttribute('data-acc')===ACC));
+    toast(isGuest() ? '🚪 访客模式：存档已清零，仅开放第 1~2 关' : '👤 已选择 账号'+ACC+'（金币 '+getCoins()+'）');
+  };
+});
+/* 卷首·人物志：沉浸式村民介绍（标题画面 → 人物志 → 选关） */
+const CAST=[
+  {avatar:'🧑‍💼', name:'你', role:'新任保护区管理员',
+   desc:'刚从海洋保护专业毕业，行李还没拆完，就被派到了这片红树林。<br>试用期考核就摆在眼前——你的<b>每一个决定</b>，都会写进这片森林的明天。',
+   quote:'“别紧张……深呼吸。先去看看林子，再去见见镇上的人。”'},
+  {avatar:'👴', name:'陈伯', role:'老渔民',
+   desc:'在这片海岸打了一辈子鱼，闭着眼都知道潮水往哪走。<br>镇上人都说，他<b>认得每一棵红树</b>，就像认得自家亲戚。',
+   quote:'“以前鱼多得很，后来水脏了，鱼也跑了……这林子，得有人管咯。”'},
+  {avatar:'🔬', name:'周博士', role:'海洋生态学家',
+   desc:'监测站的常客，说话慢，出数据快。团水虱暴发的预警，就是她<b>第一个拉响</b>的。<br>她总说：读懂数据，才能读懂海。',
+   quote:'“记住，团水虱不可怕，可怕的是让水变肥的那根排污管。”'},
+  {avatar:'🎩', name:'王老板', role:'养殖场 · 工厂老板',
+   desc:'镇上最有钱、也最会算账的人。他不是坏人，只是他的账本上，<b>一直没算过环境这一栏</b>。<br>和他打交道的每一轮，都是发展与保护的拉锯。',
+   quote:'“别光说我啊——不赚钱，全镇人喝西北风吗？”'},
+  {avatar:'👮', name:'巡护员小林', role:'你的同事 · 巡护员',
+   desc:'你唯一的搭档，负责巡林、护鸟、劝阻偷猎，已经<b>跑烂了三双鞋</b>。<br>出了什么幺蛾子，总是他最先发现。',
+   quote:'“滩涂那边昨天又有人偷倒垃圾，我得再去看看……你跟我一起？”'},
+  {avatar:'🌳', name:'红树林', role:'真正的主角 · 无声的见证者',
+   desc:'它不会说话，却防住风暴潮、养活鱼虾蟹、锁住蓝碳——<b>它是海岸线上最后一道防线</b>。<br>故事里所有的相遇，最终都是为了它。',
+   quote:'“潮起，我守住海岸；潮落，我抚育众生。——只求别让污水，先一步找到我。”'}
+];
+let castIdx=0, castDone=null;
+function renderCast(){
+  const c=CAST[castIdx];
+  const card=$('castCard');
+  card.style.animation='none'; void card.offsetWidth; card.style.animation='';   // 重触发入场动画
+  card.innerHTML=
+    '<div class="cast-avatar">'+c.avatar+'</div>'+
+    '<div class="cast-name">'+c.name+'</div>'+
+    '<div class="cast-role">'+c.role+'</div>'+
+    '<div class="cast-desc">'+c.desc+'</div>'+
+    '<div class="cast-quote">'+c.quote+'</div>';
+  $('castHead').textContent = castIdx===0 ? '在故事开始之前' : (castIdx===CAST.length-1 ? '最后，这位' : '在这片海岸上，还有——');
+  $('castSub').textContent  = castIdx===0 ? '先认识一下，这片海岸上的人' : (castIdx===CAST.length-1 ? '故事真正的重量，都压在它身上' : '他们将与你的每个决定交织在一起');
+  $('castNext').textContent = castIdx===CAST.length-1 ? '▶ 翻开序章' : '下一位 →';
+  $('castDots').innerHTML = CAST.map((_,i)=>'<span class="cast-dot'+(i===castIdx?' on':'')+'"></span>').join('');
+}
+function showCastIntro(then){
+  castDone=then; castIdx=0;
+  renderCast();
+  $('castVeil').classList.add('show');
+}
+function castAdvance(){
+  if(castIdx<CAST.length-1){ castIdx++; renderCast(); return; }
+  castFinish();
+}
+/* 收幕：末卡后接一段过场字幕，把人物志与正篇故事缝起来 */
+function castFinish(){
+  const nx=$('castNext'), sk=$('castSkip');
+  nx.style.display='none'; sk.style.display='none';
+  $('castDots').innerHTML='';
+  $('castCard').innerHTML=
+    '<div class="cast-out">🌊 潮水漫过滩涂，晨光落在气生根上——<br>' +
+    '陈伯的船、周博士的数据、王老板的算盘、小林的巡护日志，<br>' +
+    '从今天起，都写进你的管理站。<br><br><b>你的故事，从这个清晨开始。</b></div>';
+  $('castHead').textContent='—— 序 幕 落 ——';
+  $('castSub').textContent='';
+  setTimeout(()=>{
+    const v=$('castVeil');
+    v.classList.add('bye');
+    setTimeout(()=>{
+      v.classList.remove('show','bye');
+      nx.style.display=''; sk.style.display='';
+      if(castDone){ const f=castDone; castDone=null; f(); }
+    }, 700);
+  }, 2600);
+}
+$('castNext').onclick=castAdvance;
+$('castSkip').onclick=()=>castFinish();
+
+/* 开场标题动画：点击"开始游戏"后先看人物志，再翻到选关 */
+$('introStart').onclick=()=>{
+  const v=$('introVeil');
+  v.classList.add('bye');
+  setTimeout(()=>{ v.remove(); showCastIntro(()=>showLevelSelect()); }, 650);
+};
+</script>
+</body>
+</html>
