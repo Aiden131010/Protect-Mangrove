@@ -426,37 +426,50 @@
   .cast-out b{color:#ffe9a8;letter-spacing:2px;}
   @keyframes castOutIn{from{opacity:0;transform:translateY(12px);}to{opacity:1;transform:none;}}
 
-  /* ===== 行动效果大汇报（打牌后的全屏数字动画，替代"小框看不清"） ===== */
+  /* ===== 行动汇报单（海报风的彩色汇报单，打牌后弹出） ===== */
   #fxVeil{
-    position:fixed;inset:0;z-index:83;pointer-events:none;display:none;
-    align-items:center;justify-content:center;flex-direction:column;gap:12px;
+    position:fixed;inset:0;z-index:83;display:none;cursor:pointer;
+    align-items:center;justify-content:center;background:rgba(15,30,42,.38);padding:16px;
   }
   #fxVeil.show{display:flex;}
-  .fx-title{
-    font-size:15px;font-weight:900;letter-spacing:3px;color:#fff;
-    background:rgba(23,48,62,.88);padding:8px 26px;border-radius:999px;
-    box-shadow:0 8px 26px rgba(0,0,0,.3);animation:fxTitle .45s cubic-bezier(.2,.9,.3,1.3) both;
+  .report{
+    width:min(400px,92vw);max-height:88vh;overflow:auto;background:#fdf9ee;color:#2c3a33;
+    border-radius:10px;box-shadow:0 24px 70px rgba(0,0,0,.45);
+    border:9px solid #fff;outline:1px solid #e3d9bd;
+    transform:rotate(-1deg);animation:posterIn .55s cubic-bezier(.2,.9,.3,1.25) both;
   }
-  @keyframes fxTitle{from{opacity:0;transform:translateY(-26px) scale(.8);}to{opacity:1;transform:none;}}
-  .fx-sum{font-size:17px;font-weight:900;letter-spacing:2px;padding:6px 22px;border-radius:999px;animation:fxTitle .45s cubic-bezier(.2,.9,.3,1.3) both .15s;}
-  .fx-sum.good{color:#eafff2;background:linear-gradient(180deg,#2ea23f,#1f7d31);box-shadow:0 6px 22px rgba(46,162,63,.45);}
-  .fx-sum.bad{color:#fff1ef;background:linear-gradient(180deg,#d9534a,#a8322b);box-shadow:0 6px 22px rgba(217,83,74,.45);}
-  .fx-sum.mid{color:#fffbe8;background:linear-gradient(180deg,#c99a2e,#9a7420);box-shadow:0 6px 22px rgba(201,154,46,.4);}
-  .fx-row{display:flex;flex-wrap:wrap;gap:12px;justify-content:center;max-width:82vw;}
-  .fx-chip{
-    display:flex;align-items:center;gap:9px;padding:13px 22px;border-radius:16px;
-    background:rgba(255,255,255,.96);box-shadow:0 10px 30px rgba(0,0,0,.28);
-    animation:fxChip .5s cubic-bezier(.2,.9,.3,1.4) both;
-  }
+  .report-head{padding:14px 18px 13px;color:#fff;position:relative;}
+  .report-head.good{background:linear-gradient(135deg,#2ea23f,#1f7d31);}
+  .report-head.bad{background:linear-gradient(135deg,#d9534a,#a8322b);}
+  .report-head.mid{background:linear-gradient(135deg,#c99a2e,#9a7420);}
+  .report-head .rp-kicker{font-size:10px;letter-spacing:3px;opacity:.85;font-weight:800;}
+  .report-head .rp-name{font-size:19px;font-weight:900;margin-top:3px;line-height:1.35;}
+  .report-head .rp-no{position:absolute;top:14px;right:14px;font-size:10px;opacity:.8;letter-spacing:1px;font-variant-numeric:tabular-nums;}
+  .report-body{padding:13px 18px 15px;}
+  .rp-label{font-size:11px;font-weight:900;letter-spacing:3px;color:#8a7f63;margin:2px 0 8px;}
+  .fx-sum{display:table;font-size:15px;font-weight:900;letter-spacing:2px;padding:6px 20px;border-radius:999px;margin:0 auto 12px;}
+  .fx-sum.good{color:#eafff2;background:linear-gradient(180deg,#2ea23f,#1f7d31);}
+  .fx-sum.bad{color:#fff1ef;background:linear-gradient(180deg,#d9534a,#a8322b);}
+  .fx-sum.mid{color:#fffbe8;background:linear-gradient(180deg,#c99a2e,#9a7420);}
+  .rp-row{display:flex;flex-wrap:wrap;gap:9px;}
+  .rp-chip{display:flex;align-items:center;gap:8px;padding:9px 13px;border-radius:12px;box-shadow:0 3px 10px rgba(0,0,0,.10);animation:fxChip .5s cubic-bezier(.2,.9,.3,1.4) both;}
+  .rp-chip .fxc-ico{font-size:24px;}
+  .rp-chip .fxc-name{font-size:12px;font-weight:700;color:#5a6b7d;}
+  .rp-chip .fxc-val{font-size:22px;font-weight:900;font-variant-numeric:tabular-nums;}
+  .rp-chip.up .fxc-val{color:#1f9d4d;}
+  .rp-chip.down .fxc-val{color:#c0392b;}
+  .rp-chip .fxc-badge{font-size:10px;font-weight:800;color:#fff;background:#e67e22;border-radius:999px;padding:2px 7px;}
+  .rp-chip.c-water{background:#e8f3fd;} .rp-chip.c-tree{background:#e9f7ee;}
+  .rp-chip.c-iso{background:#fdecec;} .rp-chip.c-pred{background:#fff4e5;} .rp-chip.c-econ{background:#fdf6dd;}
+  .rp-why{margin-top:13px;background:#fff8d6;border-left:4px solid #e0a52e;border-radius:0 8px 8px 0;padding:10px 12px;font-size:12.5px;line-height:1.85;color:#5a4a1e;animation:fxChip .5s ease both .45s;}
+  .rp-why b{color:#9a7420;}
+  .rp-foot{display:flex;align-items:center;justify-content:space-between;margin-top:14px;}
+  .rp-sign{font-size:11px;color:#8a7f63;letter-spacing:1px;}
+  .rp-stamp{border:2.5px solid #c0392b;color:#c0392b;font-weight:900;font-size:12.5px;letter-spacing:2.5px;padding:5px 12px;border-radius:6px;transform:rotate(-6deg);animation:stampIn .4s cubic-bezier(.3,1.6,.5,1) both .55s;}
+  #fxVeil.out .report{animation:fxOut .35s ease both !important;}
+  .rp-hint{margin-top:10px;text-align:center;font-size:11px;color:#b3a98d;letter-spacing:1px;}
   @keyframes fxChip{from{opacity:0;transform:translateY(34px) scale(.5);}60%{transform:translateY(-6px) scale(1.06);}to{opacity:1;transform:none;}}
-  .fx-chip .fxc-ico{font-size:30px;}
-  .fx-chip .fxc-name{font-size:13px;font-weight:700;color:#5a6b7d;}
-  .fx-chip .fxc-val{font-size:26px;font-weight:900;letter-spacing:1px;font-variant-numeric:tabular-nums;}
-  .fx-chip.up .fxc-val{color:#1f9d4d;}
-  .fx-chip.down .fxc-val{color:#c0392b;}
-  .fx-chip .fxc-badge{font-size:11px;font-weight:800;color:#fff;background:#e67e22;border-radius:999px;padding:2px 8px;}
-  #fxVeil.out .fx-title,#fxVeil.out .fx-sum,#fxVeil.out .fx-chip{animation:fxOut .4s ease both !important;}
-  @keyframes fxOut{to{opacity:0;transform:translateY(-22px);}}
+  @keyframes fxOut{to{opacity:0;transform:rotate(-1deg) translateY(-26px);}}
 
   /* ===== 宣传海报（社区宣传卡弹出，可学习的科普海报） ===== */
   #posterVeil{
@@ -1985,31 +1998,51 @@ function runSteps(card){
   renderCards();
   showStep();
 }
-/* ===== 行动效果大汇报：全屏数字卡动画，替代"小框里一行小字" ===== */
+/* ===== 行动汇报单：海报风的彩色汇报单，打牌后弹出（含"干什么用"讲解 + 存档印章） ===== */
 let _fxTm1=null,_fxTm2=null;
+function closeFxReport(){
+  const veil=$('fxVeil');
+  clearTimeout(_fxTm1); clearTimeout(_fxTm2);
+  veil.classList.add('out');
+  setTimeout(()=>{ veil.classList.remove('show','out'); veil.innerHTML=''; },360);
+}
 function showFxBanner(eff, ce){
   const veil=$('fxVeil');
   clearTimeout(_fxTm1); clearTimeout(_fxTm2);
-  const NM={water:['💧','水质'],tree:['🌳','红树'],iso:['🦐','团水虱'],pred:['🦀','天敌']};
+  const NM={water:['💧','水质','c-water'],tree:['🌳','红树','c-tree'],iso:['🦐','团水虱','c-iso'],pred:['🦀','天敌','c-pred']};
   const items=[];
-  for(const k in NM){ if(eff && eff[k]) items.push({ico:NM[k][0],name:NM[k][1],val:eff[k].val,badge:(eff[k].boosted?'⚡危机×1.5':'')+(eff[k].dbl?' ✖2':'')}); }
-  if(ce!==undefined && ce) items.push({ico:'💰',name:'经济',val:ce,badge:''});
+  for(const k in NM){ if(eff && eff[k]) items.push({ico:NM[k][0],name:NM[k][1],cls:NM[k][2],val:eff[k].val,badge:(eff[k].boosted?'⚡危机×1.5':'')+(eff[k].dbl?' ✖2':'')}); }
+  if(ce!==undefined && ce) items.push({ico:'💰',name:'经济',cls:'c-econ',val:ce,badge:''});
   if(!items.length) return;
   const ups=items.filter(i=>i.val>0).length, downs=items.filter(i=>i.val<0).length;
   const sum = ups>downs ? {cls:'good',txt:'👍 生态在变好！'} : downs>ups ? {cls:'bad',txt:'⚠️ 情况在恶化……'} : {cls:'mid',txt:'⚖️ 有得也有失'};
+  const why=(activeCard && activeCard.desc) ? activeCard.desc : '';
+  const no='MG-'+String(100000+Math.floor(Math.random()*899999));
   veil.innerHTML =
-    '<div class="fx-title">📋 行动效果汇报</div>'+
-    '<div class="fx-sum '+sum.cls+'">'+sum.txt+'</div>'+
-    '<div class="fx-row">'+items.map((it,i)=>
-      '<div class="fx-chip '+(it.val>0?'up':'down')+'" style="animation-delay:'+(0.2+i*0.16)+'s;">'+
-        '<span class="fxc-ico">'+it.ico+'</span>'+
-        '<span><div class="fxc-name">'+it.name+'</div>'+
-        '<div class="fxc-val">'+(it.val>0?'+':'')+it.val+'</div></span>'+
-        (it.badge?'<span class="fxc-badge">'+it.badge+'</span>':'')+
-      '</div>').join('')+'</div>';
+    '<div class="report">'+
+      '<div class="report-head '+sum.cls+'">'+
+        '<div class="rp-kicker">MANGROVE GUARDIAN · 行 动 汇 报 单</div>'+
+        '<div class="rp-name">'+(activeCard ? activeCard.icon+' '+activeCard.name : '📋 本次行动')+'</div>'+
+        '<div class="rp-no">编号 '+no+'</div>'+
+      '</div>'+
+      '<div class="report-body">'+
+        '<div class="fx-sum '+sum.cls+'">'+sum.txt+'</div>'+
+        '<div class="rp-label">① 本轮成效一览</div>'+
+        '<div class="rp-row">'+items.map((it,i)=>
+          '<div class="rp-chip '+it.cls+' '+(it.val>0?'up':'down')+'" style="animation-delay:'+(0.15+i*0.14)+'s;">'+
+            '<span class="fxc-ico">'+it.ico+'</span>'+
+            '<span><div class="fxc-name">'+it.name+'</div>'+
+            '<div class="fxc-val">'+(it.val>0?'+':'')+it.val+'</div></span>'+
+            (it.badge?'<span class="fxc-badge">'+it.badge+'</span>':'')+
+          '</div>').join('')+'</div>'+
+        (why ? '<div class="rp-why">🔎 <b>这个行动是干什么用的？</b><br>'+why+'</div>' : '')+
+        '<div class="rp-foot"><span class="rp-sign">红树林保护区管理站 · 行动档案</span><span class="rp-stamp">✔ 已存档</span></div>'+
+        '<div class="rp-hint">— 点击任意处收下汇报单 —</div>'+
+      '</div>'+
+    '</div>';
   veil.classList.remove('out'); veil.classList.add('show');
-  _fxTm1=setTimeout(()=>veil.classList.add('out'), 2500);
-  _fxTm2=setTimeout(()=>{ veil.classList.remove('show','out'); veil.innerHTML=''; }, 2950);
+  veil.onclick=closeFxReport;                     // 点任意处立即收下
+  _fxTm1=setTimeout(closeFxReport, 6500);         // 不点也在 6.5s 后自动存档
 }
 
 /* ===== 宣传海报：社区宣传卡弹出一张讲清"因果链"的科普海报 ===== */
