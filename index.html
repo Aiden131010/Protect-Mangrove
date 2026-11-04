@@ -1189,7 +1189,7 @@ function roundStory(lvId, round){
 }
 function getUnlocked(){
   let v=parseInt(localStorage.getItem(K('unlocked'))||'1',10);
-  if(isGuest()) v=Math.min(v,2);        // 访客最多解锁第 2 关
+  if(isGuest() && !isAdmin() && !isJuniorAdmin()) v=Math.min(v,2);   // 访客最多解锁第 2 关（管理员/小管理员特权解除上限）
   return v;
 }
 function getStars(lv){ return parseInt(localStorage.getItem(K('stars_'+lv))||'0',10); }
@@ -2629,7 +2629,7 @@ function ending(kind){
   if(win){
     stars = 1 + (S.tree>=80?1:0) + (S.water>=75?1:0) + (S.econ>=10?1:0);
     saveStars(S.level.id, stars);
-    if(S.level.id>=getUnlocked() && S.level.id<LEVELS.length && !(isGuest() && S.level.id>=2)){
+    if(S.level.id>=getUnlocked() && S.level.id<LEVELS.length && !(isGuest() && !isAdmin() && S.level.id>=2)){
       localStorage.setItem(K('unlocked'), String(S.level.id+1));
       toast('🗺️ 解锁下一关：'+LEVELS[S.level.id].name);
     }
@@ -2759,7 +2759,7 @@ function activateAdmin(){
   localStorage.removeItem(K('junior'));   // 身份互斥：后激活的覆盖先前的
   localStorage.removeItem(K('hell'));
   localStorage.setItem(K('coins'),'9999');
-  localStorage.setItem(K('unlocked'), String(isGuest()?2:LEVELS.length));   // 访客开挂也最多到第2关
+  localStorage.setItem(K('unlocked'), String(LEVELS.length));   // 管理员特权：解锁全部关卡（含访客）
   closeModal();
   updateAdminUI();
   if(S.level){ S.econ=100; render(); }
@@ -2799,7 +2799,7 @@ function updateAdminUI(){
   $('adminBtn').textContent = adminish ? '🦸 已激活' : (isJuniorAdmin() ? '🎫 小管理员' : '🔑 管理员');
 }
 function jumpToLastLevel(who){
-  if(isGuest()){ toast('🚪 访客模式最多挑战第 2 关，此特权不开放'); return; }
+  // 管理员/小管理员特权：即使是访客账号也放行（上限只对普通访客生效）
   localStorage.setItem(K('unlocked'), String(LEVELS.length));
   closeModal(); startLevel(LEVELS.length, true);
   toast((who||'🦸')+' 超能力发动！直接空降 '+LEVELS[LEVELS.length-1].name);
@@ -2826,7 +2826,6 @@ function showCheatPanel(){
         S.busy=false; closeModal(); ending('平衡结局'); }},
      {label:'🚀 直达最后一关', fn:()=>jumpToLastLevel('🦸')},
      {label:'🏁 一键通关全书', fn:()=>{
-        if(isGuest()){ toast('🚪 访客模式不能一键通关'); return; }
         localStorage.setItem(K('unlocked'), String(LEVELS.length));
         LEVELS.forEach(l=>saveStars(l.id,3));
         S.busy=true; S.stage='ended';
@@ -2961,7 +2960,7 @@ function showLevelSelect(){
       '<span>'+(locked?'🔒 未解锁':'<span class="lv-stars">'+(st?'★'.repeat(st)+'☆'.repeat(4-st):'未通关')+'</span>')+'</span></div>'+
       '<div class="lv-desc">'+lv.desc+'<br><b>🎯 通关目标：</b>'+lv.goal+'</div></button>';
   });
-  showModal('🗺️ 选择关卡'+(isGuest()?'（🚪 访客模式 · 仅开放第 1~2 关）':''),
+  showModal('🗺️ 选择关卡'+(isGuest() && !isAdmin() && !isJuniorAdmin() ? '（🚪 访客模式 · 仅开放第 1~2 关）':''),
     '<div class="m-body">'+rows+'</div>',
     [{label:'关闭', cls:'ghost', fn:closeModal}]);
   document.querySelectorAll('.level-card').forEach(b=>{
