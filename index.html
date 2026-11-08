@@ -1957,13 +1957,13 @@ function confirmCard(c){
     guard(c.name, c.econDelta, ()=>runSteps(c));
   }
 }
-/* 会否一击跌破破产线（双倍券会让花费也 ×2，一并计入） */
+/* 会否一击跌破破产线（双倍券只翻倍收益、不翻倍花费，花费按原价计入） */
 function lethalCost(delta){
   if(!delta || delta>=0 || !S.level || S.stage==='ended') return false;
-  return S.econ + delta*(S._dblArmed?2:1) <= BANKRUPT;
+  return S.econ + delta <= BANKRUPT;
 }
 function confirmLethal(name, delta, go){
-  const after = S.econ + delta*(S._dblArmed?2:1);
+  const after = S.econ + delta;
   showModal('💰 财政红线警告！',
     '<div class="m-body">执行<b>「'+name+'」</b>要花 <b>'+delta+'</b>，执行后经济将跌到 <b style="color:#c0392b;">'+after+'</b>（破产线 −30）。<br><br>一旦越过红线，你会被<b>立即撤职（游戏失败）</b>！<br><small>💡 建议先选有收入的发展类决策搞钱，或换一张便宜的保护卡。每局通关/成就都有金币入账，别让账本先崩了。</small></div>',
     [{label:'取消，我先搞钱',cls:'ghost',fn:closeModal},
@@ -1992,7 +1992,7 @@ function runSteps(card){
   S.passiveDone=false;
   // 双倍行动券
   if(S._dblArmed){ S._dblMult=2; S._dblArmed=false; addInv('double',-1);
-    toast('📋 双倍行动券生效：本次行动效果 ×2！'); }
+    toast('📋 双倍行动券生效：本次行动的好效果 ×2（坏的不翻倍）！'); }
   else S._dblMult=1;
   $('stageBadge').textContent='🔍 观察连锁反应（第 '+S.round+' 轮）';
   $('stepActions').innerHTML='';
@@ -2043,7 +2043,7 @@ function showFxBanner(eff, ce){
     '</div>';
   veil.classList.remove('out'); veil.classList.add('show');
   veil.onclick=closeFxReport;                     // 点任意处立即收下
-  _fxTm1=setTimeout(closeFxReport, 6500);         // 不点也在 6.5s 后自动存档
+  _fxTm1=setTimeout(closeFxReport, 12000);        // 不点也在 12s 后自动存档（留够阅读时间，点任意处可立即收下）
 }
 
 /* ===== 宣传海报：社区宣传卡弹出一张讲清"因果链"的科普海报 ===== */
@@ -2110,12 +2110,17 @@ function showStep(){
   };
   let eff={};
   const mult=S._dblMult||1;
+  /* 双倍券只翻倍"好"的变化：水质/红树/天敌上升、团水虱下降才算好；花钱和负面一律不翻倍 */
+  const dblIf=(k,v)=>{
+    const good=(k==='iso') ? v<0 : v>0;
+    return good ? v*mult : v;
+  };
   if(dd){
     for(const k in dd){
       let dv = dd[k];                              // 关键修复：d 的值可能是函数（如种树卡按水质求值），先求值再结算
       if(typeof dv==='function') dv=dv();
       if(typeof dv!=='number' || isNaN(dv)) dv=0;  // 兜底：任何 NaN/非法值一律按 0 处理，绝不污染存档状态
-      const b=crisisBoost(k,dv*mult); const v=b.v; eff[k]={val:v, boosted:b.boosted, dbl:mult>1};
+      const b=crisisBoost(k,dblIf(k,dv)); const v=b.v; eff[k]={val:v, boosted:b.boosted, dbl:mult>1 && ((k==='iso')?dv<0:dv>0)};
       if(k==='water') S.water=clamp(S.water+v);
       if(k==='tree')  S.tree =clamp(S.tree +v);
       if(k==='iso')   S.iso  =clamp(S.iso  +v);
@@ -2125,7 +2130,7 @@ function showStep(){
   }
   if(stepIdx===0 && activeCard){
     if(activeCard.econDelta){
-      let ce=activeCard.econDelta*mult;
+      let ce=activeCard.econDelta>0 ? activeCard.econDelta*mult : activeCard.econDelta;  // 双倍券：只翻倍收入，不翻倍花费
       if(isTrollAdmin() && ce>0) ce=Math.ceil(ce/2);   // 整蛊：收入类卡到账悄悄缩水一半
       S.econ += ce;
     }
@@ -2150,9 +2155,9 @@ function showStep(){
   $('stepText').textContent = st.text + (warnTxt?' '+warnTxt:'');
   let dh='';
   if(stepIdx===0 && activeCard && activeCard.econDelta){
-    let ce=activeCard.econDelta*mult;
+    let ce=activeCard.econDelta>0 ? activeCard.econDelta*mult : activeCard.econDelta;
     if(isTrollAdmin() && ce>0) ce=Math.ceil(ce/2);
-    dh+='<span class="'+(ce>0?'delta-pos':'delta-neg')+'">💰经济 '+(ce>0?'+':'')+ce+(mult>1?' ×2':'')+'</span>';
+    dh+='<span class="'+(ce>0?'delta-pos':'delta-neg')+'">💰经济 '+(ce>0?'+':'')+ce+(mult>1 && activeCard.econDelta>0?' ×2':'')+'</span>';
   }
   if(st.d) for(const k in eff){
     const nm={water:'💧水质',tree:'🌳红树',iso:'🦐团水虱',pred:'🦀天敌'}[k];
@@ -2163,7 +2168,7 @@ function showStep(){
   /* 全屏大汇报：这一步的所有数值变化，用大数字卡动画展示（好绿坏红，一眼看清） */
   let ceOut;
   if(stepIdx===0 && activeCard && activeCard.econDelta){
-    ceOut=activeCard.econDelta*mult;
+    ceOut=activeCard.econDelta>0 ? activeCard.econDelta*mult : activeCard.econDelta;
     if(isTrollAdmin() && ceOut>0) ceOut=Math.ceil(ceOut/2);
   }
   showFxBanner(eff, ceOut);
@@ -2707,7 +2712,7 @@ function showShop(){
   const itemRows=
     '<div class="stat-row"><span>🧰 开局基金（下关开局自动用，经济 +25）</span>'+
       '<b>拥有 '+getInv('fund')+'</b> <button class="btn ghost small" data-item="fund" '+(getCoins()<120?'disabled':'')+'>🪙 120</button></div>'+
-    '<div class="stat-row"><span>📋 双倍行动券（下一张卡全部效果 ×2）</span>'+
+    '<div class="stat-row"><span>📋 双倍行动券（下一张卡的好效果 ×2，坏的不翻倍）</span>'+
       '<b>拥有 '+getInv('double')+'</b> <button class="btn ghost small" data-item="double" '+(getCoins()<150?'disabled':'')+'>🪙 150</button></div>';
   showModal('🛍️ 管理站小卖部',
     '<div class="m-body">'+
@@ -3065,7 +3070,7 @@ $('rerollBtn').onclick=()=>{
 $('dblBtn').onclick=()=>{
   if(S.stage==='decision' && !S.busy && getInv('double')>0 && !S._dblArmed){
     S._dblArmed=true; renderCards();
-    toast('📋 双倍券已激活：你打出的下一张卡，全部效果 ×2！');
+    toast('📋 双倍券已激活：下一张卡的好效果 ×2（坏的不翻倍）！');
   }
 };
 $('restartBtn').onclick=()=>{
