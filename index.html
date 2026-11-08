@@ -1478,6 +1478,7 @@ const ACH_LIST=[
  ['零污染通关','全程不碰高污染产业并通关',25],
  ['财政盈余','通关时经济 ≥ 25',20],
  ['生态满分','通关时红树 ≥90 且水质 ≥85',25],
+ ['物理学不存在了','满心通关：红树和水质双双顶到 100 —— 这不科学，但很红树',40],
  ['风雨同舟','一关经历 4 次以上突发事件并通关',20],
  ['绝地救援','使用过「应急救援行动」并通关',20],
  ['传奇管理员','通过第 5 关，达成"全书完"',50],
@@ -2637,6 +2638,7 @@ function ending(kind){
     if(S.recovered) mark('力挽狂澜');
     if(S.econ>=25) mark('财政盈余');
     if(S.tree>=90 && S.water>=85) mark('生态满分');
+    if(S.tree>=100 && S.water>=100) mark('物理学不存在了');   // 🌌 满心通关：两项都顶满，物理学当场下班
     if(!S.everDirty) mark('零污染通关');
     if(S.eventsDone>=4) mark('风雨同舟');
     if(S._usedRescue) mark('绝地救援');
@@ -2666,12 +2668,19 @@ function ending(kind){
   acts.push({label:'🔄 重玩本关', fn:()=>{closeModal(); startLevel(S.level.id);}});
   acts.push({label:'📖 复盘知识点', cls:'ghost', fn:()=>{ closeModal(); showRecap(); }});
   acts.push({label:'🗺️ 返回选关', cls:'ghost', fn:()=>{closeModal(); showLevelSelect();}});
-  // 通关先翻到"卷末尾声"故事页，再进入结算
-  const finish=()=>showModal(title, html, acts, icon);
-  if(win && EPILOGUES[S.level.id]){
-    const ep=EPILOGUES[S.level.id];
-    showStory('🌊 '+ep.k, ep.t, ep.paras, '', '查看结算 →', finish);
-  } else finish();
+  // 🌌 满心通关彩蛋：红树和水质都顶到 100 —— 先弹彩蛋，再接卷末尾声与结算
+  const perfect = win && S.tree>=100 && S.water>=100;
+  const goEpilogue=()=>{
+    if(win && EPILOGUES[S.level.id]){
+      const ep=EPILOGUES[S.level.id];
+      showStory('🌊 '+ep.k, ep.t, ep.paras, '', '查看结算 →', ()=>showModal(title, html, acts, icon));
+    } else showModal(title, html, acts, icon);
+  };
+  if(perfect){
+    showModal('🌌 物理学不存在了',
+      '<div class="m-body">结算单显示：红树健康度 <b>100</b> · 水质健康度 <b>100</b>，一片枯枝都没有。<br><br>周博士盯着监测屏看了很久，慢慢合上了笔记本：<b>"这不科学……但很红树。"</b><br><br>🏆 隐藏成就 <b>「物理学不存在了」</b> 已入册 —— 满心通关的你，温柔地让这一关的物理学下了班。🌌</div>',
+      [{label:'🤫 我什么都没看见', fn:()=>{ closeModal(); goEpilogue(); }}], '🌌');
+  } else goEpilogue();
 }
 function showRecap(){
   showModal('📖 复盘：看不见的因果链',
