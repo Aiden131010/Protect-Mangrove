@@ -2994,6 +2994,60 @@ function hellify(lv){
   h.desc='近期监测发现本区存在不明渗漏源，生态数据波动异常，上级要求限期整改。';
   return h;
 }
+/* ===== 新手教程：第一次玩时分步引导（可在「📖 玩法」里随时重看） ===== */
+function tutorialDone(){ return localStorage.getItem(K('tutorial'))==='done'; }
+function markTutorial(){ localStorage.setItem(K('tutorial'),'done'); }
+function showTutorial(then){
+  const STEPS=[
+    {ico:'🌿', t:'🌱 欢迎来到红树林！', x:
+      '<div style="font-size:40px;margin-bottom:6px;">🧑‍💼🌲</div>'+
+      '<b>你，就是这片红树林保护区的新任管理员！</b><br><br>'+
+      '养鸭场、化工厂想进来做生意，团水虱在暗处啃树根，台风随时会来——<br>'+
+      '你的任务：<b>守护这片林子，撑过 5 个关卡！</b>'},
+    {ico:'📊', t:'认识你的仪表盘', x:
+      '<div style="font-size:13px;text-align:left;line-height:1.9;">'+
+      '<b>💧 水质健康度</b> —— 越高水越干净<br>'+
+      '<b>🌳 红树健康度</b> —— <span style="color:#c0392b;">归零＝森林崩溃，直接失败！</span><br>'+
+      '<b>🦐 团水虱密度</b> —— 越低越好，它们啃树根<br>'+
+      '<b>🦀 天敌数量</b> —— 你的帮手，负责吃团水虱<br>'+
+      '<b>💰 经济</b> —— 别让它跌破 <b style="color:#c0392b;">−30</b>，否则会被撤职！</div>'},
+    {ico:'🃏', t:'怎么行动？打决策卡！', x:
+      '<div style="font-size:13px;text-align:left;line-height:1.9;">'+
+      '每一轮会送上 <b>3 张决策卡</b>，选 1 张打出（不满意可「换一批」，每轮 2 次）。<br><br>'+
+      '💰 <b>发展类</b>：赚钱，但可能污染环境<br>'+
+      '🛡️ <b>保护类</b>：花钱，但修复生态<br>'+
+      '绿色 <b style="color:#1f7a4d;">＋数字</b>＝好效果，红色 <b style="color:#c0392b;">−数字</b>＝坏效果<br>'+
+      '带「2 种做法」的卡有隐藏选项，想清楚再选！</div>'},
+    {ico:'🔍', t:'观察连锁反应', x:
+      '<div style="font-size:13px;text-align:left;line-height:1.9;">'+
+      '打出的卡不会立刻生效完——点<b>「继续观察 →」</b>一步步看它怎么改变这片林子。<br><br>'+
+      '📄 弹出的<b>行动汇报单</b>和<b>知识卡</b>，点任意处收下，里面藏着通关线索！</div>'},
+    {ico:'⛈️', t:'小心突发事件', x:
+      '<div style="font-size:13px;text-align:left;line-height:1.9;">'+
+      '台风、督察、赤潮、油轮泄漏……<b>18 类事件</b>随机杀出！<br><br>'+
+      '也有好运：神秘捐款人、白海豚现身都会送钱。<br>'+
+      '看清每个选项的代价再决定——<b>便宜的背后往往有账单。</b></div>'},
+    {ico:'🏆', t:'通关秘籍', x:
+      '<div style="font-size:13px;text-align:left;line-height:1.9;">'+
+      '<b>① 先治污，再种树</b>——源头不堵，种多少死多少<br>'+
+      '<b>② 留住天敌</b>——螃蟹和鱼是天然的"刹车"<br>'+
+      '<b>③ 危机＝转机</b>——指标危急(&lt;40)时，保护卡效果 ⚡ 自动加成 50%<br>'+
+      '<b>④ 目标</b>：期限到时 <b>水质＋红树都 ≥60</b> 就通关！<br><br>'+
+      '准备好了吗？这片林子交给你了！</div>'}
+  ];
+  let i=0;
+  const draw=()=>{
+    const last=i===STEPS.length-1;
+    const acts=[];
+    if(!last) acts.push({label:'跳过教程',cls:'ghost',fn:()=>{markTutorial();closeModal();if(then)then();}});
+    acts.push(last
+      ? {label:'🚀 开始守护红树林！',fn:()=>{markTutorial();closeModal();if(then)then();}}
+      : {label:'下一步 ▶',fn:()=>{i++;draw();}});
+    showModal(STEPS[i].t, '<div class="m-body" style="text-align:center;">'+STEPS[i].x+'</div>', acts, STEPS[i].ico);
+  };
+  draw();
+}
+
 function startLevel(id, force){
   let lv=LEVELS.find(l=>l.id===id); if(!lv) return;
   if(isTrollAdmin()) lv=hellify(lv);   // 乐子管理员：表面正常，实际地狱
@@ -3017,13 +3071,18 @@ function startLevel(id, force){
     '👤 本卷登场：老渔民<b>陈伯</b> · 生态学家<b>周博士</b> · 化工厂<b>王老板</b><br>🎯 通关目标：'+lv.goal,
     '翻开第一页 →',
     ()=>{
-      $('stepTag').textContent='📖 '+pro.title;
-      $('stepText').innerHTML='🎯 通关目标：<b>'+lv.goal+'</b><br>💡 故事开始前，先点一点场景里的红树、螃蟹、团水虱，熟悉这片林子（随时都可以点）。';
-      $('stepDelta').innerHTML='';
-      $('stepActions').innerHTML='<button class="btn" id="beginBtn">开始第 1 轮决策 →</button>';
-      $('beginBtn').onclick=()=>{ closeModal(); showRoundStart(); };
-      $('cardsTitle').style.display=''; $('cards').style.display='';
-      renderCards(); render();
+      const begin=()=>{
+        $('stepTag').textContent='📖 '+pro.title;
+        $('stepText').innerHTML='🎯 通关目标：<b>'+lv.goal+'</b><br>💡 故事开始前，先点一点场景里的红树、螃蟹、团水虱，熟悉这片林子（随时都可以点）。';
+        $('stepDelta').innerHTML='';
+        $('stepActions').innerHTML='<button class="btn" id="beginBtn">开始第 1 轮决策 →</button>';
+        $('beginBtn').onclick=()=>{ closeModal(); showRoundStart(); };
+        $('cardsTitle').style.display=''; $('cards').style.display='';
+        renderCards(); render();
+      };
+      // 新手教程：第一次进入第 1 关，翻开第一页后先上分步引导
+      if(lv.id===1 && !tutorialDone()) showTutorial(begin);
+      else begin();
     });
 }
 
@@ -3061,7 +3120,8 @@ $('helpBtn').onclick=()=>{
     '<b>4️⃣ 结局</b>：红树归零 = 崩溃；期限到且红树 ≥ 60 = 通关（1~4 星）；从濒危拉回 ≥ 60 = 隐藏「挽救结局」。<br><br>'+
     '<b>🛍️ 金币商店</b>：通关赚金币（25 起，星级越高越多；挽救 +10；失败也有 6 枚安慰奖）。商店可买<b>场景皮肤</b>（黄昏金滩/樱花粉湾/极夜荧光）和<b>道具</b>（开局基金、双倍行动券）。<br><br>'+
     '<small>💡 核心提示：团水虱是"加速器"而非"元凶"。先治污，再种树；留住天敌，就留住了刹车。</small></div>',
-    [{label:'明白',fn:closeModal}]);
+    [{label:'🎓 重看新手教程',fn:()=>{closeModal();showTutorial();}},
+     {label:'明白',fn:closeModal}]);
 };
 $('levelBtn').onclick=()=>{ if(!S.busy || S.stage==='idle' || S.stage==='ended') showLevelSelect(); else showModal('🗺️ 换关卡？','<div class="m-body">当前进度将丢失，确定要返回选关吗？</div>',[{label:'取消',cls:'ghost',fn:closeModal},{label:'确定',fn:()=>{closeModal();S.busy=false;S.stage='idle';showLevelSelect();}}]); };
 $('rerollBtn').onclick=()=>{
