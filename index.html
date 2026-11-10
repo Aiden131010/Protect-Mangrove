@@ -917,6 +917,7 @@ let ACC = localStorage.getItem('mg_account') || '1';
 if(!localStorage.getItem('mg_account')) localStorage.setItem('mg_account','1');
 function K(key){ return 'mg_a'+ACC+'_'+key; }          // 当前账号的存储键
 function isGuest(){ return ACC==='guest'; }
+if(isGuest()) wipeGuest();   // 访客每次进入（含刷新页面）一律清零存档并退出管理员，绝不残留（wipeGuest 有函数声明提升）
 function accCoins(id){ return parseInt(localStorage.getItem('mg_a'+id+'_coins')||'0',10); }
 (function migrateOldSaves(){                            // 旧存档（无账号时代）整体迁移到账号1
   if(localStorage.getItem('mg_migrated')) return;
@@ -2933,8 +2934,10 @@ $('cheatBtn').onclick=()=>{
 };
 
 /* ================= 账号切换 ================= */
-function wipeGuest(){   // 访客存档每次进入全部清零
+function wipeGuest(){   // 访客存档每次进入全部清零（含管理员身份，访客永远从零开始）
   Object.keys(localStorage).filter(k=>k.indexOf('mg_aguest_')===0).forEach(k=>localStorage.removeItem(k));
+  // 显式退出三种身份（管理员/小管理员/乐子管理员），绝不残留
+  ['admin','junior','hell'].forEach(k=>localStorage.removeItem(K(k)));
 }
 function doSwitchAccount(acc){
   if(acc===ACC){ closeModal(); toast('当前已经是这个账号啦'); return; }
@@ -3115,7 +3118,7 @@ $('restartBtn').onclick=()=>{
 render();
 renderCards();
 applySkin();
-/* 管理员状态恢复（按账号持久） */
+/* 管理员状态恢复（按账号持久）；访客清零已在账号系统定义处（脚本最早期）执行 */
 updateAdminUI();
 /* 开场画面账号选择芯片 */
 document.querySelectorAll('.acc-chip').forEach(ch=>{
